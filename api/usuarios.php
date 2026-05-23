@@ -24,18 +24,30 @@ match($metodo) {
 };
 
 // ─────────────────────────────────────────
-//  LISTAR todos los usuarios
-// ─────────────────────────────────────────
 function listar(): void {
-    requireAdmin(); // Solo el admin puede ver todos los usuarios
+    $usuario = requireAuth();
+    if (!in_array($usuario['rol'], ['Administrador', 'Nutricionista'])) {
+        responderJSON(['error' => 'Acceso denegado. Solo administradores o nutricionistas.'], 403);
+    }
 
     $db   = getDB();
-    // No devolvemos la contraseña por seguridad
-    $stmt = $db->query("
-        SELECT id, nombre, email, rol, created_at
-        FROM usuarios
-        ORDER BY created_at DESC
-    ");
+    if ($usuario['rol'] === 'Nutricionista') {
+        // Nutricionista solo puede listar pacientes
+        $stmt = $db->prepare("
+            SELECT id, nombre, email, rol, created_at
+            FROM usuarios
+            WHERE rol = 'Paciente'
+            ORDER BY nombre ASC
+        ");
+        $stmt->execute();
+    } else {
+        // Admin ve todos
+        $stmt = $db->query("
+            SELECT id, nombre, email, rol, created_at
+            FROM usuarios
+            ORDER BY created_at DESC
+        ");
+    }
     responderJSON($stmt->fetchAll());
 }
 

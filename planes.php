@@ -172,6 +172,7 @@ $nombre  = $usuario['nombre'];
 // Rol del usuario actual (viene del PHP, lo usamos en JS)
 const ROL = '<?= $rol ?>';
 let pacienteIdActual = <?= $usuario['id'] ?>;
+let todosLosPlanes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('plan_fecha') && (document.getElementById('plan_fecha').value = new Date().toISOString().split('T')[0]);
@@ -236,7 +237,9 @@ async function cargarPlanes(pacienteId) {
         return;
     }
 
-    if (data.length === 0) {
+    todosLosPlanes = Array.isArray(data) ? data : [];
+
+    if (todosLosPlanes.length === 0) {
         container.innerHTML = `
             <div class="col-span-2 text-center py-16">
                 <span class="material-symbols-outlined text-5xl text-gray-300">restaurant_menu</span>
@@ -245,7 +248,7 @@ async function cargarPlanes(pacienteId) {
         return;
     }
 
-    container.innerHTML = data.map(p => tarjetaPlan(p)).join('');
+    container.innerHTML = todosLosPlanes.map(p => tarjetaPlan(p)).join('');
 }
 
 // ──────────────────────────────────────────────
@@ -313,7 +316,7 @@ function tarjetaPlan(p) {
 
             <div class="flex gap-2 mt-4">
                 <button onclick='descargarPDF(${p.id})' class="py-2 border rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1" title="Descargar PDF"><span class="material-symbols-outlined text-base">download</span>PDF</button>
-                <button onclick='verDetalle(${JSON.stringify(p)})'
+                <button onclick="verDetallePorId(${p.id})"
                         class="flex-1 py-2 border rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                     Ver detalle
                 </button>
@@ -420,6 +423,10 @@ function verDetalle(p) {
         </div>` : ''}
     `;
     document.getElementById('modalDetalle').classList.remove('hidden');
+}
+function verDetallePorId(planId) {
+    const p = todosLosPlanes.find(pl => pl.id === planId);
+    if (p) verDetalle(p);
 }
 function cerrarDetalle() { document.getElementById('modalDetalle').classList.add('hidden'); }
 

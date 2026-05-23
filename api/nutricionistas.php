@@ -33,7 +33,8 @@ $where  = ["n.estado_verificacion = 'aprobado'"];
 $params = [];
 
 if (!empty($_GET['nombre'])) {
-    $where[]  = 'u.nombre LIKE ?';
+    $where[]  = '(u.nombre LIKE ? OR n.especialidad LIKE ?)';
+    $params[] = '%' . $_GET['nombre'] . '%';
     $params[] = '%' . $_GET['nombre'] . '%';
 }
 if (!empty($_GET['especialidad'])) {

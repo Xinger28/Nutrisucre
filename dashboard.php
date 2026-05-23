@@ -5,6 +5,16 @@ $usuario      = $_SESSION['usuario'];
 $rol          = $usuario['rol'];
 $nombre       = $usuario['nombre'];
 $primerNombre = explode(' ', $nombre)[0];
+
+$estadoVerif = '';
+if ($rol === 'Nutricionista') {
+    require_once 'config.php';
+    $db = getDB();
+    $stmt = $db->prepare("SELECT estado_verificacion FROM nutricionistas WHERE usuario_id = ?");
+    $stmt->execute([$usuario['id']]);
+    $nutri = $stmt->fetch();
+    $estadoVerif = $nutri['estado_verificacion'] ?? 'pendiente';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -52,8 +62,21 @@ $primerNombre = explode(' ', $nombre)[0];
   </div>
 
 
-  <?php if ($rol === 'Nutricionista'): ?>
-  <!-- Banner verificacion pendiente -->
+  <?php if ($rol === 'Nutricionista' && $estadoVerif !== 'aprobado'): ?>
+  <!-- Banner verificacion -->
+  <?php if ($estadoVerif === 'rechazado'): ?>
+  <div id="bannerVerif" class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-start gap-4">
+    <span class="material-symbols-outlined text-red-500 text-3xl flex-shrink-0 mt-0.5">dangerous</span>
+    <div class="flex-1">
+      <p class="font-bold text-red-800">Verificación profesional rechazada</p>
+      <p class="text-red-700 text-sm mt-1">Tu postulación fue rechazada por el administrador. Por favor, vuelve a enviar tu documentación corregida para habilitar tu cuenta.</p>
+    </div>
+    <a href="registro_nutricionista.php"
+       class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors">
+      Reenviar ahora →
+    </a>
+  </div>
+  <?php else: ?>
   <div id="bannerVerif" class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 flex items-start gap-4">
     <span class="material-symbols-outlined text-amber-500 text-3xl flex-shrink-0 mt-0.5">verified_user</span>
     <div class="flex-1">
@@ -65,6 +88,7 @@ $primerNombre = explode(' ', $nombre)[0];
       Completar ahora →
     </a>
   </div>
+  <?php endif; ?>
   <?php endif; ?>
 
   <!-- HERO -->

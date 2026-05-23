@@ -17,7 +17,7 @@ $stmt = $db->prepare("
     SELECT
         p.id, p.titulo, p.descripcion, p.calorias, p.proteinas,
         p.carbohidratos, p.grasas, p.duracion_semanas,
-        p.estado, p.fecha_inicio,
+        p.estado, p.fecha_inicio, p.paciente_id,
         pac.nombre AS paciente,
         nut.nombre AS nutricionista,
         n.especialidad
@@ -33,7 +33,7 @@ $plan = $stmt->fetch();
 if (!$plan) responderJSON(['error' => 'Plan no encontrado'], 404);
 
 // Verificar que el usuario tiene acceso a este plan
-$esPropio  = $plan['paciente'] === $usuario['nombre'];
+$esPropio  = intval($plan['paciente_id']) === intval($usuario['id']);
 $esProfesional = in_array($usuario['rol'], ['Nutricionista','Administrador']);
 
 if (!$esPropio && !$esProfesional) {

@@ -243,6 +243,7 @@ $nombre  = $usuario['nombre'];
 // ──────────────────────────────────────────────
 const ROL = '<?= $rol ?>';
 let idParaEliminar = null;
+let todosLosServicios = [];
 
 document.addEventListener('DOMContentLoaded', cargarServicios);
 
@@ -277,13 +278,15 @@ async function cargarServicios() {
         return;
     }
 
+    todosLosServicios = data;
+
     // Stats para nutricionista
     if (ROL === 'Nutricionista') {
-        const pending  = data.filter(s => s.estado === 'Pendiente').length;
-        const approved = data.filter(s => s.estado === 'Aprobado').length;
-        const rejected = data.filter(s => s.estado === 'Rechazado').length;
+        const pending  = todosLosServicios.filter(s => s.estado === 'Pendiente').length;
+        const approved = todosLosServicios.filter(s => s.estado === 'Aprobado').length;
+        const rejected = todosLosServicios.filter(s => s.estado === 'Rechazado').length;
         document.getElementById('statsNutri').innerHTML = [
-            { lbl:'Total servicios', val:data.length,  color:'text-gray-800' },
+            { lbl:'Total servicios', val:todosLosServicios.length,  color:'text-gray-800' },
             { lbl:'Aprobados',       val:approved,     color:'text-[#22c55e]' },
             { lbl:'Pendientes',      val:pending,      color:'text-amber-600' },
         ].map(s => `
@@ -293,7 +296,7 @@ async function cargarServicios() {
             </div>`).join('');
     }
 
-    renderServicios(data);
+    renderServicios(todosLosServicios);
 }
 
 // ──────────────────────────────────────────────
@@ -379,20 +382,20 @@ function tarjetaServicio(s) {
             <!-- Botones según rol -->
             <div class="flex gap-2 flex-wrap">
                 ${esNutri ? `
-                    <button onclick="abrirModalEditar(${JSON.stringify(s).replace(/"/g,'&quot;')})"
+                    <button onclick="abrirModalEditarPorId(${s.id})"
                             class="flex-1 py-2 border rounded-xl text-xs font-semibold hover:bg-gray-50 flex items-center justify-center gap-1">
                         <span class="material-symbols-outlined text-base">edit</span>Editar
                     </button>
-                    <button onclick="pedirEliminar(${s.id},'${s.titulo.replace(/'/g,"\\'")}  ')"
+                    <button onclick="pedirEliminarPorId(${s.id})"
                             class="py-2 px-3 border border-red-200 text-red-500 rounded-xl text-xs font-semibold hover:bg-red-50">
                         <span class="material-symbols-outlined text-base">delete</span>
                     </button>` : ''}
                 ${esAdmin ? `
-                    <button onclick="abrirModalValidar(${JSON.stringify(s).replace(/"/g,'&quot;')})"
+                    <button onclick="abrirModalValidarPorId(${s.id})"
                             class="flex-1 py-2 bg-[#22c55e] text-white rounded-xl text-xs font-bold hover:bg-[#16a34a] flex items-center justify-center gap-1">
                         <span class="material-symbols-outlined text-base">rate_review</span>Revisar
                     </button>
-                    <button onclick="pedirEliminar(${s.id},'${s.titulo.replace(/'/g,"\\'")}  ')"
+                    <button onclick="pedirEliminarPorId(${s.id})"
                             class="py-2 px-3 border border-red-200 text-red-500 rounded-xl text-xs font-semibold hover:bg-red-50">
                         <span class="material-symbols-outlined text-base">delete</span>
                     </button>` : ''}
@@ -583,6 +586,19 @@ async function logout() {
     if (!confirm('¿Cerrar sesión?')) return;
     await fetch('api/auth.php?accion=logout', { method: 'POST' });
     window.location.href = 'login.php';
+}
+
+function abrirModalEditarPorId(id) {
+    const s = todosLosServicios.find(srv => srv.id === id);
+    if (s) abrirModalEditar(s);
+}
+function pedirEliminarPorId(id) {
+    const s = todosLosServicios.find(srv => srv.id === id);
+    if (s) pedirEliminar(s.id, s.titulo);
+}
+function abrirModalValidarPorId(id) {
+    const s = todosLosServicios.find(srv => srv.id === id);
+    if (s) abrirModalValidar(s);
 }
 
 ['modalServicio','modalValidar','modalEliminar'].forEach(id => {

@@ -41,16 +41,27 @@ function listar(): void {
     if ($usuario['rol'] === 'Administrador') {
         // Admin ve TODOS con filtro de estado opcional
         $estado = $_GET['estado'] ?? '';
-        $where  = $estado ? "WHERE s.estado = '$estado'" : '';
-        $stmt   = $db->query("
-            SELECT s.*, u.nombre AS nutricionista_nombre
-            FROM servicios s
-            JOIN usuarios u ON u.id = s.nutricionista_id
-            $where
-            ORDER BY
-                FIELD(s.estado,'Pendiente','Aprobado','Rechazado'),
-                s.created_at DESC
-        ");
+        if ($estado) {
+            $stmt = $db->prepare("
+                SELECT s.*, u.nombre AS nutricionista_nombre
+                FROM servicios s
+                JOIN usuarios u ON u.id = s.nutricionista_id
+                WHERE s.estado = ?
+                ORDER BY
+                    FIELD(s.estado,'Pendiente','Aprobado','Rechazado'),
+                    s.created_at DESC
+            ");
+            $stmt->execute([$estado]);
+        } else {
+            $stmt = $db->query("
+                SELECT s.*, u.nombre AS nutricionista_nombre
+                FROM servicios s
+                JOIN usuarios u ON u.id = s.nutricionista_id
+                ORDER BY
+                    FIELD(s.estado,'Pendiente','Aprobado','Rechazado'),
+                    s.created_at DESC
+            ");
+        }
 
     } elseif ($usuario['rol'] === 'Nutricionista') {
         // Nutricionista ve SOLO sus propios servicios (todos los estados)
@@ -297,6 +308,14 @@ function validar(array $body): void {
     }
 
     $db   = getDB();
+
+    // Verificar si el servicio existe
+    $check = $db->prepare("SELECT id FROM servicios WHERE id = ?");
+    $check->execute([$id]);
+    if (!$check->fetch()) {
+        responderJSON(['error' => 'Servicio no encontrado'], 404);
+    }
+
     $stmt = $db->prepare("
         UPDATE servicios
         SET estado = ?, motivo_rechazo = ?
@@ -307,10 +326,6 @@ function validar(array $body): void {
         $estado === 'Rechazado' ? $motivo : null,
         $id
     ]);
-
-    if ($db->rowCount() === 0) {
-        responderJSON(['error' => 'Servicio no encontrado'], 404);
-    }
 
     responderJSON([
         'ok'      => true,

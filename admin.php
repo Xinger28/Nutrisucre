@@ -185,6 +185,7 @@ $nombre  = $usuario['nombre'];
 //  Estado
 // ──────────────────────────────────────────
 let todosLosUsuarios = [];
+let todasLasPostulaciones = [];
 let idParaEliminar   = null;
 const BADGE = { 'Administrador':'bg-purple-100 text-purple-700', 'Nutricionista':'bg-blue-100 text-blue-700', 'Paciente':'bg-green-100 text-green-700' };
 
@@ -242,7 +243,8 @@ async function cargarPostulaciones(estado) {
     const url = 'api/postulaciones.php' + (estado ? `?estado=${estado}` : '');
     const res  = await fetch(url);
     const data = await res.json();
-    renderPostulaciones(Array.isArray(data) ? data : []);
+    todasLasPostulaciones = Array.isArray(data) ? data : [];
+    renderPostulaciones(todasLasPostulaciones);
 }
 
 function renderPostulaciones(lista) {
@@ -286,7 +288,7 @@ function renderPostulaciones(lista) {
 
             <!-- Botones de acción -->
             <div class="flex gap-2 mt-4 flex-wrap">
-                <button onclick="verReporte(${JSON.stringify(p).replace(/'/g,'&apos;')})"
+                <button onclick="verReportePorId(${p.id})"
                         class="px-4 py-2 border rounded-xl text-xs font-semibold hover:bg-gray-50 flex items-center gap-1">
                     <span class="material-symbols-outlined text-base">description</span>Ver reporte
                 </button>
@@ -447,10 +449,10 @@ function renderTabla(data) {
             <td class="px-6 py-5"><span class="${BADGE[u.rol]||'bg-gray-100 text-gray-700'} px-3 py-1 rounded-full text-xs font-medium">${u.rol}</span></td>
             <td class="px-6 py-5 text-gray-400 text-xs">${fecha}</td>
             <td class="px-6 py-5 text-right space-x-1">
-                <button onclick="abrirEditar(${u.id},'${u.nombre.replace(/'/g,"\\'")}','${u.email}','${u.rol}')"
+                <button onclick="abrirEditarPorId(${u.id})"
                         class="p-2 text-[#22c55e] hover:bg-green-50 rounded-xl transition-colors">
                     <span class="material-symbols-outlined text-xl">edit</span></button>
-                <button onclick="pedirEliminar(${u.id},'${u.nombre.replace(/'/g,"\\'")}  ')"
+                <button onclick="pedirEliminarPorId(${u.id})"
                         class="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors">
                     <span class="material-symbols-outlined text-xl">delete</span></button>
             </td></tr>`;
@@ -487,6 +489,14 @@ function abrirEditar(id, nombre, email, rol) {
     document.getElementById('labelPass').textContent = '(vacío = no cambiar)';
     ocultarMsgModal();
     document.getElementById('modal').classList.remove('hidden');
+}
+function abrirEditarPorId(id) {
+    const u = todosLosUsuarios.find(x => x.id === id);
+    if (u) abrirEditar(u.id, u.nombre, u.email, u.rol);
+}
+function pedirEliminarPorId(id) {
+    const u = todosLosUsuarios.find(x => x.id === id);
+    if (u) pedirEliminar(u.id, u.nombre);
 }
 function cerrarModal() { document.getElementById('modal').classList.add('hidden'); }
 
@@ -598,14 +608,19 @@ async function validarServicioAdmin(id, estado, motivo = '') {
         body: JSON.stringify({ id, estado, motivo })
     });
     const data = await res.json();
+    const el = document.getElementById('feedbackSrv');
     if (data.ok) {
-        const el = document.getElementById('feedbackSrv');
         el.textContent = '✅ ' + data.mensaje;
         el.className = 'mb-4 px-5 py-3 rounded-2xl text-sm font-medium text-center bg-green-100 text-green-700';
         el.classList.remove('hidden');
         setTimeout(() => el.classList.add('hidden'), 4000);
         cargarServiciosAdmin('');
         cargarStats();
+    } else {
+        el.textContent = '❌ ' + (data.error || 'Error al validar el servicio');
+        el.className = 'mb-4 px-5 py-3 rounded-2xl text-sm font-medium text-center bg-red-100 text-red-700';
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 4000);
     }
 }
 

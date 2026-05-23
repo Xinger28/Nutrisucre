@@ -413,7 +413,7 @@ function renderCards(lista) {
                     </button>
                 </div>
                 <!-- Reseña -->
-                <button onclick="abrirResena(${n.id},'${n.nombre.replace(/'/g,"\\'")}  ')"
+                <button onclick="abrirResenaPorId(${n.id})"
                         class="w-full mt-2 py-2 border rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
                     ★ Dejar reseña
                 </button>
@@ -615,6 +615,10 @@ function abrirResena(nutriId, nombre) {
     document.getElementById('textoEstrellas').textContent = 'Selecciona una calificación';
     document.getElementById('msgResena').classList.add('hidden');
     document.getElementById('modalResena').classList.remove('hidden');
+}
+function abrirResenaPorId(id) {
+    const n = todosLosNutri.find(nutri => nutri.id === id);
+    if (n) abrirResena(n.id, n.nombre);
 }
 function cerrarResena() { document.getElementById('modalResena').classList.add('hidden'); }
 

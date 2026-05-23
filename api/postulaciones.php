@@ -80,20 +80,33 @@ function listar(): void {
     $db    = getDB();
     $estado = $_GET['estado'] ?? '';
 
-    $where = $estado ? "WHERE p.estado = '$estado'" : '';
-
-    $stmt = $db->query("
-        SELECT p.id, p.estado, p.puntaje_tecnico, p.alertas, p.created_at,
-               u.nombre, u.email,
-               p.universidad, p.titulo_prof, p.registro_prof,
-               p.especialidades, p.experiencia, p.licencia_vence,
-               p.resp_tecnica_1, p.resp_tecnica_2, p.resp_tecnica_3,
-               p.resp_tecnica_4, p.resp_tecnica_5, p.notas_admin
-        FROM postulaciones p
-        JOIN usuarios u ON u.id = p.usuario_id
-        $where
-        ORDER BY p.created_at DESC
-    ");
+    if ($estado) {
+        $stmt = $db->prepare("
+            SELECT p.id, p.estado, p.puntaje_tecnico, p.alertas, p.created_at,
+                   u.nombre, u.email,
+                   p.universidad, p.titulo_prof, p.registro_prof,
+                   p.especialidades, p.experiencia, p.licencia_vence,
+                   p.resp_tecnica_1, p.resp_tecnica_2, p.resp_tecnica_3,
+                   p.resp_tecnica_4, p.resp_tecnica_5, p.notas_admin
+            FROM postulaciones p
+            JOIN usuarios u ON u.id = p.usuario_id
+            WHERE p.estado = ?
+            ORDER BY p.created_at DESC
+        ");
+        $stmt->execute([$estado]);
+    } else {
+        $stmt = $db->query("
+            SELECT p.id, p.estado, p.puntaje_tecnico, p.alertas, p.created_at,
+                   u.nombre, u.email,
+                   p.universidad, p.titulo_prof, p.registro_prof,
+                   p.especialidades, p.experiencia, p.licencia_vence,
+                   p.resp_tecnica_1, p.resp_tecnica_2, p.resp_tecnica_3,
+                   p.resp_tecnica_4, p.resp_tecnica_5, p.notas_admin
+            FROM postulaciones p
+            JOIN usuarios u ON u.id = p.usuario_id
+            ORDER BY p.created_at DESC
+        ");
+    }
     responderJSON($stmt->fetchAll());
 }
 
@@ -276,6 +289,14 @@ function revisar(array $body): void {
         else           array_unshift($params, $p['usuario_id']);
 
         $upd->execute($params);
+    } elseif ($estado === 'rechazado' || $estado === 'pendiente') {
+        $post = $db->prepare("SELECT usuario_id FROM postulaciones WHERE id=?");
+        $post->execute([$id]);
+        $p    = $post->fetch();
+        if ($p) {
+            $upd = $db->prepare("UPDATE nutricionistas SET estado_verificacion=? WHERE usuario_id=?");
+            $upd->execute([$estado, $p['usuario_id']]);
+        }
     }
 
     responderJSON(['ok' => true, 'mensaje' => "Postulación marcada como $estado"]);

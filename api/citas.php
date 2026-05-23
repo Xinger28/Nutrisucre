@@ -37,8 +37,26 @@ function listarCitas(): void {
             ORDER BY c.fecha DESC, c.hora DESC
         ");
         $stmt->execute([$usuario['id']]);
+    } elseif ($usuario['rol'] === 'Nutricionista') {
+        // Nutricionista solo ve citas agendadas con él
+        $stmt = $db->prepare("
+            SELECT
+                c.id, c.fecha,
+                TIME_FORMAT(c.hora, '%H:%i') AS hora,
+                c.precio, c.estado,
+                pac.nombre AS paciente,
+                nut.nombre AS nutricionista,
+                n.especialidad
+            FROM citas c
+            JOIN usuarios pac     ON pac.id = c.paciente_id
+            JOIN nutricionistas n ON n.id   = c.nutricionista_id
+            JOIN usuarios nut     ON nut.id = n.usuario_id
+            WHERE n.usuario_id = ?
+            ORDER BY c.fecha DESC, c.hora DESC
+        ");
+        $stmt->execute([$usuario['id']]);
     } else {
-        // Nutricionista y Admin ven todas
+        // Admin ve todas
         $stmt = $db->query("
             SELECT
                 c.id, c.fecha,

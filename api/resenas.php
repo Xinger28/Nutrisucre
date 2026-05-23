@@ -68,10 +68,10 @@ function crear(array $body): void {
     // Recalcular rating promedio en la tabla nutricionistas
     $avg = $db->prepare("
         UPDATE nutricionistas
-        SET rating = (SELECT ROUND(AVG(calificacion),1) FROM resenas WHERE nutricionista_id = id)
+        SET rating = (SELECT ROUND(AVG(calificacion),1) FROM resenas r2 WHERE r2.nutricionista_id = ?)
         WHERE id = ?
     ");
-    $avg->execute([$nutriId]);
+    $avg->execute([$nutriId, $nutriId]);
 
     responderJSON(['ok' => true, 'mensaje' => 'Reseña guardada']);
 }

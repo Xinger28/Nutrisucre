@@ -6,6 +6,13 @@
 //  Ejemplo: $paginaActual = 'buscar';
 // ============================================================
 
+if (!isset($rol)) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $rol = $_SESSION['usuario']['rol'] ?? '';
+}
+
 // Mapa de links según rol
 // Estructura: [ href, icono, label, solo_roles (null = todos) ]
 $navLinks = [
