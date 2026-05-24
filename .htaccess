@@ -1,0 +1,21 @@
+# NutriSucre — .htaccess
+Options -Indexes
+
+# Redirigir raíz a login
+DirectoryIndex login.php index.php index.html
+
+# Permitir CORS para API (necesario en algunos navegadores)
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Bloquear acceso directo a archivos SQL y git
+<FilesMatch "\.(sql|git|env)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acceso a carpeta .git
+<DirectoryMatch "\.git">
+    Require all denied
+</DirectoryMatch>
