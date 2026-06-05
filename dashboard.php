@@ -36,12 +36,19 @@ $avatarLetra = mb_strtoupper(mb_substr($primerNombre, 0, 1));
 <!-- Header -->
 <header class="ios-header md:pl-64">
   <div class="flex items-center gap-3">
+    <!-- Botón menú móvil -->
     <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon">
       <span class="icon" style="font-size:20px">menu</span>
     </button>
-    <div>
-      <p class="font-black text-[18px] tracking-tight">Inicio</p>
+    <!-- Logo visible en móvil (en desktop lo tapa el sidebar) -->
+    <div class="flex items-center gap-2 md:hidden">
+      <div class="w-8 h-8 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-[10px] flex items-center justify-center shadow-md">
+        <span class="icon icon-fill text-white" style="font-size:17px">nutrition</span>
+      </div>
+      <span class="font-black text-[17px] tracking-tight text-[#1c1c1e]">NutriSucre</span>
     </div>
+    <!-- Título en desktop -->
+    <p class="font-black text-[18px] tracking-tight hidden md:block">Inicio</p>
   </div>
   <div class="flex items-center gap-3">
     <div class="text-right hidden sm:block">
