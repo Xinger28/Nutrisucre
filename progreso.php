@@ -16,66 +16,55 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NutriSucre - Mi Progreso</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<!-- Chart.js para los graficos -->
+<title>NutriSucre · Mi Progreso</title>
+<?php require_once '_ios_head.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  body { font-family: 'Inter', sans-serif; background: #f8fafb; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300; }
-  /* Estilos del selector de metrica activa */
-  .btn-metrica { transition: all .2s; }
-  .btn-metrica.activo { background: #22c55e; color: white; }
+  .btn-metrica { transition:all .2s; border:1.5px solid var(--border); padding:7px 16px; border-radius:50px; font-size:13px; font-weight:600; cursor:pointer; background:white; color:var(--text2); }
+  .btn-metrica.activo { background:var(--green); color:white; border-color:var(--green); box-shadow:0 4px 12px rgba(34,197,94,0.3); }
 </style>
-</head>
 <body>
 
 <!-- ======= SIDEBAR (igual en todas las paginas) ======= -->
 <?php $paginaActual = 'progreso'; require_once '_sidebar.php'; ?>
 
 <!-- ======= HEADER ======= -->
-<header class="flex justify-between items-center px-6 py-4 bg-white/80 backdrop-blur-xl border-b md:pl-72 sticky top-0 z-50">
+<header class="ios-header md:pl-64">
   <div class="flex items-center gap-3">
-    <h1 class="text-2xl font-bold">Mi Progreso</h1>
+    <p class="font-black text-[18px]">Mi Progreso</p>
   </div>
   <div class="flex items-center gap-3">
-    <button onclick="abrirModalRegistro()"
-            class="bg-[#22c55e] text-white px-5 py-2.5 rounded-2xl font-semibold flex items-center gap-2 hover:bg-[#16a34a] transition-colors text-sm">
-      <span class="material-symbols-outlined text-xl">add</span>
-      Nuevo registro
+    <button onclick="abrirModalRegistro()" class="ios-btn text-[13px]" style="border-radius:12px;padding:10px 18px">
+      <span class="icon" style="font-size:16px">add</span> Nuevo registro
     </button>
     <div class="text-right hidden sm:block">
-      <div class="font-semibold text-sm"><?= htmlspecialchars($nombre) ?></div>
-      <div class="text-xs text-[#22c55e]"><?= htmlspecialchars($rol) ?></div>
+      <p class="font-semibold text-[14px]"><?= htmlspecialchars($nombre) ?></p>
+      <p class="text-[12px] text-[#22c55e] font-semibold"><?= htmlspecialchars($rol) ?></p>
     </div>
   </div>
 </header>
 
 <!-- ======= CONTENIDO PRINCIPAL ======= -->
-<main class="md:pl-64 p-6 max-w-7xl mx-auto">
+<main class="md:pl-64 p-5 md:p-8 max-w-6xl mx-auto space-y-5">
 
   <!-- Stats resumen (se llenan con JS) -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white rounded-2xl p-5 shadow-sm border">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-[20px] border border-[var(--border)] p-5">
       <p class="text-xs text-gray-500 mb-1">Peso inicial</p>
       <p id="statPesoInicio" class="text-2xl font-black text-gray-800">—</p>
       <p class="text-xs text-gray-400">kg</p>
     </div>
-    <div class="bg-white rounded-2xl p-5 shadow-sm border">
+    <div class="bg-white rounded-[20px] border border-[var(--border)] p-5">
       <p class="text-xs text-gray-500 mb-1">Peso actual</p>
       <p id="statPesoActual" class="text-2xl font-black text-[#22c55e]">—</p>
       <p class="text-xs text-gray-400">kg</p>
     </div>
-    <div class="bg-white rounded-2xl p-5 shadow-sm border">
+    <div class="bg-white rounded-[20px] border border-[var(--border)] p-5">
       <p class="text-xs text-gray-500 mb-1">Diferencia total</p>
       <p id="statDiferencia" class="text-2xl font-black">—</p>
       <p class="text-xs text-gray-400">kg desde el inicio</p>
     </div>
-    <div class="bg-white rounded-2xl p-5 shadow-sm border">
+    <div class="bg-white rounded-[20px] border border-[var(--border)] p-5">
       <p class="text-xs text-gray-500 mb-1">Registros</p>
       <p id="statRegistros" class="text-2xl font-black text-gray-800">0</p>
       <p class="text-xs text-gray-400">entradas totales</p>
@@ -83,7 +72,7 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
   </div>
 
   <!-- Grafico + selector de metrica -->
-  <div class="bg-white rounded-3xl shadow-sm border p-6 mb-8">
+  <div class="ios-card p-6">
     <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
       <h2 class="text-xl font-bold">Evolución de métricas</h2>
       <!-- Selector de metrica: JS escucha el click y redibuja el Chart.js -->
@@ -102,8 +91,8 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
   </div>
 
   <!-- Tabla de historial -->
-  <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
-    <div class="flex justify-between items-center px-6 py-5 border-b">
+  <div class="ios-card overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-5 border-b border-[rgba(0,0,0,0.05)]">
       <h2 class="text-xl font-bold">Historial de registros</h2>
       <span id="totalRegistros" class="text-sm text-gray-400"></span>
     </div>
@@ -129,47 +118,47 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
 </main>
 
 <!-- ======= MODAL: Nuevo registro ======= -->
-<div id="modalRegistro" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-3xl w-full max-w-lg p-8">
+<div id="modalRegistro" class="ios-modal-bg">
+  <div class="ios-modal max-w-lg p-7">
     <div class="flex justify-between items-center mb-6">
       <h3 class="text-2xl font-bold">Nuevo registro de progreso</h3>
       <button onclick="cerrarModalRegistro()">
-        <span class="material-symbols-outlined text-gray-400">close</span>
+        <span class="icon" style="font-size:20px">close</span>
       </button>
     </div>
 
     <div class="space-y-4">
       <div>
         <label class="block text-sm font-semibold mb-1">Fecha *</label>
-        <input id="reg_fecha" type="date" class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+        <input id="reg_fecha" type="date" class="ios-input">
       </div>
       <!-- Grid de medidas: 2 columnas -->
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold mb-1">Peso (kg)</label>
           <input id="reg_peso" type="number" step="0.1" min="20" max="300" placeholder="ej: 72.5"
-                 class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+                 class="ios-input">
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1">Cintura (cm)</label>
           <input id="reg_cintura" type="number" step="0.1" min="40" max="200" placeholder="ej: 85.0"
-                 class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+                 class="ios-input">
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1">Cadera (cm)</label>
           <input id="reg_cadera" type="number" step="0.1" min="40" max="250" placeholder="ej: 98.0"
-                 class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+                 class="ios-input">
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1">% Grasa corporal</label>
           <input id="reg_grasa" type="number" step="0.1" min="1" max="60" placeholder="ej: 25.0"
-                 class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+                 class="ios-input">
         </div>
       </div>
       <div>
         <label class="block text-sm font-semibold mb-1">Nota (opcional)</label>
         <textarea id="reg_nota" rows="2" placeholder="Ej: me siento con más energía..."
-                  class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none resize-none"></textarea>
+                  class="ios-input resize-none" style="font-family:inherit"></textarea>
       </div>
     </div>
 
@@ -177,9 +166,9 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
     <div id="msgModal" class="hidden mt-4 px-4 py-3 rounded-xl text-sm font-medium"></div>
 
     <div class="flex gap-3 mt-6">
-      <button onclick="cerrarModalRegistro()" class="flex-1 py-3 border rounded-2xl font-semibold hover:bg-gray-50">Cancelar</button>
+      <button onclick="cerrarModalRegistro()" class="ios-btn-ghost flex-1" style="border-radius:14px">Cancelar</button>
       <button onclick="guardarRegistro()" id="btnGuardar"
-              class="flex-1 py-3 bg-[#22c55e] text-white rounded-2xl font-bold hover:bg-[#16a34a] transition-colors">
+              class="ios-btn flex-1" style="border-radius:14px">
         Guardar
       </button>
     </div>
@@ -187,14 +176,14 @@ if ($rol === 'Nutricionista') { header('Location: servicios.php'); exit; }
 </div>
 
 <!-- ======= MODAL: Confirmar eliminacion ======= -->
-<div id="modalEliminar" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-3xl p-8 w-full max-w-sm text-center">
-    <span class="material-symbols-outlined text-red-400 text-5xl">delete</span>
+<div id="modalEliminar" class="ios-modal-bg">
+  <div class="ios-modal max-w-sm p-7 text-center">
+    <span class="icon text-red-400" style="font-size:52px">delete</span>
     <h3 class="text-xl font-bold mt-3 mb-2">¿Eliminar este registro?</h3>
     <p class="text-gray-500 text-sm mb-6">Esta acción no se puede deshacer.</p>
     <div class="flex gap-3">
-      <button onclick="cerrarModalEliminar()" class="flex-1 py-3 border rounded-2xl font-semibold">Cancelar</button>
-      <button onclick="ejecutarEliminar()" class="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold">Eliminar</button>
+      <button onclick="cerrarModalEliminar()" class="ios-btn-ghost flex-1" style="border-radius:14px">Cancelar</button>
+      <button onclick="ejecutarEliminar()" class="flex-1 py-3 bg-red-500 text-white rounded-[14px] font-bold hover:bg-red-600 transition-colors">Eliminar</button>
     </div>
   </div>
 </div>
@@ -383,7 +372,7 @@ function renderTabla(data) {
                 <td class="px-6 py-4 text-right">
                     <button onclick="pedirEliminar(${r.id})"
                             class="text-red-400 hover:text-red-600 p-1 transition-colors" title="Eliminar">
-                        <span class="material-symbols-outlined text-xl">delete</span>
+                        <span class="icon" style="font-size:20px">delete</span>
                     </button>
                 </td>
             </tr>
@@ -396,10 +385,10 @@ function renderTabla(data) {
 // ──────────────────────────────────────────────
 function abrirModalRegistro() {
     ocultarMsg();
-    document.getElementById('modalRegistro').classList.remove('hidden');
+    document.getElementById('modalRegistro').classList.add('open');
 }
 function cerrarModalRegistro() {
-    document.getElementById('modalRegistro').classList.add('hidden');
+    document.getElementById('modalRegistro').classList.remove('open');
 }
 
 async function guardarRegistro() {
@@ -446,10 +435,10 @@ async function guardarRegistro() {
 // ──────────────────────────────────────────────
 function pedirEliminar(id) {
     idParaEliminar = id;
-    document.getElementById('modalEliminar').classList.remove('hidden');
+    document.getElementById('modalEliminar').classList.add('open');
 }
 function cerrarModalEliminar() {
-    document.getElementById('modalEliminar').classList.add('hidden');
+    document.getElementById('modalEliminar').classList.remove('open');
     idParaEliminar = null;
 }
 async function ejecutarEliminar() {
@@ -476,16 +465,12 @@ function mostrarMsg(txt, tipo = 'error') {
 }
 function ocultarMsg() { document.getElementById('msgModal').classList.add('hidden'); }
 
-async function logout() {
-    if (!confirm('¿Cerrar sesión?')) return;
-    await fetch('api/auth.php?accion=logout', { method: 'POST' });
-    window.location.href = 'login.php';
-}
+
 
 // Cerrar modales al hacer click fuera
 ['modalRegistro','modalEliminar'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
-        if (e.target.id === id) document.getElementById(id).classList.add('hidden');
+        if (e.target.id === id) document.getElementById(id).classList.remove('open');
     });
 });
 </script>

@@ -1,0 +1,25 @@
+# Variables de entorno locales
+.env
+.env.local
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencias locales
+node_modules/
+vendor/
+
+# Archivos de backup
+*.bak
+*.backup

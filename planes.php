@@ -14,52 +14,44 @@ $nombre  = $usuario['nombre'];
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NutriSucre - Planes Nutricionales</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>NutriSucre · Planes Nutricionales</title>
+<?php require_once '_ios_head.php'; ?>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <style>
-  body { font-family: 'Inter', sans-serif; background: #f8fafb; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300; }
-  /* Barra de macronutrientes */
-  .macro-bar { height: 8px; border-radius: 4px; transition: width .6s ease; }
+  .macro-bar { height:7px; border-radius:4px; transition:width .6s ease; }
 </style>
-</head>
 <body>
 
 <?php $paginaActual = 'planes'; require_once '_sidebar.php'; ?>
 
 <!-- ======= HEADER ======= -->
-<header class="flex justify-between items-center px-6 py-4 bg-white/80 backdrop-blur-xl border-b md:pl-72 sticky top-0 z-50">
-  <h1 class="text-2xl font-bold">
-    <?= in_array($rol, ['Nutricionista','Administrador']) ? 'Gestión de Planes' : 'Mis Planes Nutricionales' ?>
-  </h1>
+<header class="ios-header md:pl-64">
   <div class="flex items-center gap-3">
-    <?php if (in_array($rol, ['Nutricionista','Administrador'])): ?>
-    <button onclick="abrirModalPlan()"
-            class="bg-[#22c55e] text-white px-5 py-2.5 rounded-2xl font-semibold flex items-center gap-2 hover:bg-[#16a34a] transition-colors text-sm">
-      <span class="material-symbols-outlined text-xl">add</span>Nuevo plan
+    <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon"><span class="icon" style="font-size:20px">menu</span></button>
+    <p class="font-black text-[18px]"><?= in_array($rol,['Nutricionista','Administrador'])?'Gestión de Planes':'Mis Planes Nutricionales' ?></p>
+  </div>
+  <div class="flex items-center gap-3">
+    <?php if (in_array($rol,['Nutricionista','Administrador'])): ?>
+    <button onclick="abrirModalPlan()" class="ios-btn text-[13px]" style="border-radius:12px;padding:10px 18px">
+      <span class="icon" style="font-size:16px">add</span> Nuevo plan
     </button>
     <?php endif; ?>
     <div class="text-right hidden sm:block">
-      <div class="font-semibold text-sm"><?= htmlspecialchars($nombre) ?></div>
-      <div class="text-xs text-[#22c55e]"><?= htmlspecialchars($rol) ?></div>
+      <p class="font-semibold text-[14px]"><?= htmlspecialchars($nombre) ?></p>
+      <p class="text-[12px] text-[#22c55e] font-semibold"><?= htmlspecialchars($rol) ?></p>
     </div>
   </div>
 </header>
 
 <!-- ======= CONTENIDO ======= -->
-<main class="md:pl-64 p-6 max-w-7xl mx-auto">
+<main class="md:pl-64 p-5 md:p-8 max-w-6xl mx-auto space-y-5">
 
   <!-- Filtro por paciente (solo para nutricionista/admin) -->
   <?php if (in_array($rol, ['Nutricionista','Administrador'])): ?>
-  <div class="bg-white rounded-2xl p-4 shadow-sm border mb-6 flex items-center gap-4">
+  <div class="bg-white rounded-[20px] border border-[var(--border)] p-4 flex items-center gap-4">
     <label class="text-sm font-semibold text-gray-600 whitespace-nowrap">Ver planes de paciente:</label>
     <select id="selectPaciente" onchange="cambiarPaciente(this.value)"
-            class="flex-1 border rounded-xl px-4 py-2 text-sm focus:border-[#22c55e] outline-none">
+            class="ios-input text-[14px] flex-1">
       <option value="">Cargando pacientes...</option>
     </select>
   </div>
@@ -73,26 +65,26 @@ $nombre  = $usuario['nombre'];
 
 <!-- ======= MODAL: Crear plan (solo nutricionista/admin) ======= -->
 <?php if (in_array($rol, ['Nutricionista','Administrador'])): ?>
-<div id="modalPlan" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+<div id="modalPlan" class="ios-modal-bg">
   <div class="bg-white rounded-3xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
     <div class="flex justify-between items-center mb-6">
       <h3 class="text-2xl font-bold">Nuevo Plan Nutricional</h3>
       <button onclick="cerrarModalPlan()">
-        <span class="material-symbols-outlined text-gray-400">close</span>
+        <span class="icon" style="font-size:20px">close</span>
       </button>
     </div>
 
     <div class="space-y-4">
       <div>
         <label class="block text-sm font-semibold mb-1">Paciente *</label>
-        <select id="plan_paciente" class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+        <select id="plan_paciente" class="ios-input">
           <option value="">Selecciona un paciente</option>
         </select>
       </div>
       <div>
         <label class="block text-sm font-semibold mb-1">Título del plan *</label>
         <input id="plan_titulo" type="text" placeholder="ej: Plan de descenso de peso - Fase 1"
-               class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+               class="ios-input">
       </div>
       <div>
         <label class="block text-sm font-semibold mb-1">Descripción</label>
@@ -130,12 +122,12 @@ $nombre  = $usuario['nombre'];
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold mb-1">Fecha de inicio</label>
-          <input id="plan_fecha" type="date" class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+          <input id="plan_fecha" type="date" class="ios-input">
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1">Duración (semanas)</label>
           <input id="plan_dur" type="number" min="1" max="52" value="4"
-                 class="w-full border rounded-2xl px-4 py-3 focus:border-[#22c55e] outline-none">
+                 class="ios-input">
         </div>
       </div>
     </div>
@@ -154,12 +146,12 @@ $nombre  = $usuario['nombre'];
 <?php endif; ?>
 
 <!-- ======= MODAL: Ver detalle del plan ======= -->
-<div id="modalDetalle" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+<div id="modalDetalle" class="ios-modal-bg">
   <div class="bg-white rounded-3xl w-full max-w-lg p-8">
     <div class="flex justify-between items-center mb-4">
       <h3 id="detalleTitulo" class="text-xl font-bold"></h3>
       <button onclick="cerrarDetalle()">
-        <span class="material-symbols-outlined text-gray-400">close</span>
+        <span class="icon" style="font-size:20px">close</span>
       </button>
     </div>
     <div id="detalleContenido" class="space-y-3 text-sm text-gray-700"></div>
@@ -242,7 +234,7 @@ async function cargarPlanes(pacienteId) {
     if (todosLosPlanes.length === 0) {
         container.innerHTML = `
             <div class="col-span-2 text-center py-16">
-                <span class="material-symbols-outlined text-5xl text-gray-300">restaurant_menu</span>
+                <span class="icon text-5xl text-gray-300">restaurant_menu</span>
                 <p class="text-gray-400 mt-3">Este paciente aún no tiene planes asignados.</p>
             </div>`;
         return;
@@ -315,7 +307,7 @@ function tarjetaPlan(p) {
             ${barras}
 
             <div class="flex gap-2 mt-4">
-                <button onclick='descargarPDF(${p.id})' class="py-2 border rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1" title="Descargar PDF"><span class="material-symbols-outlined text-base">download</span>PDF</button>
+                <button onclick='descargarPDF(${p.id})' class="py-2 border rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1" title="Descargar PDF"><span class="icon text-base">download</span>PDF</button>
                 <button onclick="verDetallePorId(${p.id})"
                         class="flex-1 py-2 border rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                     Ver detalle
@@ -335,8 +327,8 @@ function tarjetaPlan(p) {
 // ──────────────────────────────────────────────
 //  Crear plan (AJAX POST)
 // ──────────────────────────────────────────────
-function abrirModalPlan()  { document.getElementById('modalPlan').classList.remove('hidden'); }
-function cerrarModalPlan() { document.getElementById('modalPlan').classList.add('hidden'); }
+function abrirModalPlan()  { document.getElementById('modalPlan').classList.add('open'); }
+function cerrarModalPlan() { document.getElementById('modalPlan').classList.remove('open'); }
 
 async function crearPlan() {
     const paciente = document.getElementById('plan_paciente').value;
@@ -384,7 +376,7 @@ function mostrarMsgPlan(txt) {
     const el = document.getElementById('msgPlan');
     el.textContent = txt;
     el.className = 'mt-4 px-4 py-3 rounded-xl text-sm font-medium bg-red-100 text-red-700';
-    el.classList.remove('hidden');
+    el.classList.add('open');
 }
 
 // Cambiar estado del plan (activo / pausado / finalizado)
@@ -422,19 +414,15 @@ function verDetalle(p) {
             </div>
         </div>` : ''}
     `;
-    document.getElementById('modalDetalle').classList.remove('hidden');
+    document.getElementById('modalDetalle').classList.add('open');
 }
 function verDetallePorId(planId) {
     const p = todosLosPlanes.find(pl => pl.id === planId);
     if (p) verDetalle(p);
 }
-function cerrarDetalle() { document.getElementById('modalDetalle').classList.add('hidden'); }
+function cerrarDetalle() { document.getElementById('modalDetalle').classList.remove('open'); }
 
-async function logout() {
-    if (!confirm('¿Cerrar sesión?')) return;
-    await fetch('api/auth.php?accion=logout', { method: 'POST' });
-    window.location.href = 'login.php';
-}
+
 
 
 // ──────────────────────────────────────────────
@@ -562,7 +550,7 @@ async function descargarPDF(planId) {
 // Cerrar modales al click fuera
 ['modalPlan','modalDetalle'].forEach(id => {
     document.getElementById(id)?.addEventListener('click', e => {
-        if (e.target.id === id) document.getElementById(id).classList.add('hidden');
+        if (e.target.id === id) document.getElementById(id).classList.remove('open');
     });
 });
 </script>

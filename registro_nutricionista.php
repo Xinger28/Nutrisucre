@@ -11,52 +11,35 @@ $usuario = $_SESSION['usuario'];
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NutriSucre - Verificación Profesional</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<title>NutriSucre · Mi Verificación</title>
+<?php require_once '_ios_head.php'; ?>
 <style>
-  body { font-family: 'Inter', sans-serif; background: #f8fafb; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300; }
-  /* Paso activo en el stepper */
-  .step { transition: all .3s; }
-  .step.activo .step-num { background: #22c55e; color: white; }
-  .step.completado .step-num { background: #16a34a; color: white; }
-  .step.completado .step-num::after { content:'✓'; }
-  .step-num { width:32px; height:32px; border-radius:50%; border:2px solid #d1d5db;
-              display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
-  /* Secciones del formulario */
-  .seccion { display: none; }
-  .seccion.activa { display: block; }
-  .input-field { width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:12px 16px;
-                 font-size:14px; outline:none; transition:border-color .2s; }
-  .input-field:focus { border-color:#22c55e; }
-  .label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
-  .req { color:#ef4444; }
+  .paso { background:var(--bg); border-radius:18px; padding:24px; border:1.5px solid var(--border); }
+  .paso.activo { background:white; border-color:var(--green); box-shadow:0 0 0 4px rgba(34,197,94,0.1); }
+  .paso-num { width:32px; height:32px; border-radius:50%; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:var(--text3); flex-shrink:0; }
+  .paso.activo .paso-num { background:var(--green); color:white; }
+  .star-r { font-size:26px; cursor:pointer; color:#d1d5db; transition:color .15s; }
+  .star-r.on { color:#f59e0b; }
 </style>
-</head>
 <body>
 
 <!-- Header simple -->
-<header class="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+<header class="ios-header md:pl-64">
   <div class="flex items-center gap-3">
-    <span class="material-symbols-outlined text-[#22c55e] text-3xl">nutrition</span>
-    <span class="font-black text-xl text-[#22c55e]">NutriSucre</span>
-    <span class="text-gray-300 mx-2">|</span>
-    <span class="text-gray-600 font-medium text-sm">Verificación Profesional</span>
+    <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon"><span class="icon" style="font-size:20px">menu</span></button>
+    <p class="font-black text-[18px]">Mi Verificación Profesional</p>
   </div>
-  <a href="dashboard.php" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-    <span class="material-symbols-outlined text-lg">arrow_back</span> Volver
-  </a>
+  <div class="text-right hidden sm:block">
+    <p class="font-semibold text-[14px]"><?= htmlspecialchars($nombre) ?></p>
+    <p class="text-[12px] text-[#22c55e] font-semibold">Nutricionista</p>
+  </div>
 </header>
 
 <main class="max-w-3xl mx-auto p-6">
 
   <!-- Banner informativo -->
   <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 flex gap-4">
-    <span class="material-symbols-outlined text-amber-500 text-3xl flex-shrink-0 mt-0.5">verified_user</span>
+    <span class="icon text-amber-500 text-3xl flex-shrink-0 mt-0.5">verified_user</span>
     <div>
       <p class="font-bold text-amber-800">Verificación profesional requerida</p>
       <p class="text-amber-700 text-sm mt-1">Para ofrecer servicios en NutriSucre debes completar este formulario. Tu perfil quedará en estado <strong>PENDIENTE</strong> hasta que un administrador revise y apruebe tu documentación.</p>
@@ -80,7 +63,7 @@ $usuario = $_SESSION['usuario'];
   <!-- Titulo de sección actual -->
   <div class="bg-white rounded-3xl shadow-sm border p-8 mb-6">
     <div id="tituloSeccion" class="flex items-center gap-3 mb-6">
-      <span id="iconoSeccion" class="material-symbols-outlined text-3xl text-[#22c55e]">person</span>
+      <span id="iconoSeccion" class="icon text-3xl text-[#22c55e]">person</span>
       <div>
         <h2 id="textoSeccion" class="text-2xl font-bold">Información Personal</h2>
         <p id="descSeccion" class="text-gray-500 text-sm">Datos básicos de identificación profesional</p>
@@ -214,7 +197,7 @@ $usuario = $_SESSION['usuario'];
       <div id="listaExp" class="space-y-5"></div>
       <button onclick="agregarExp()"
               class="mt-4 flex items-center gap-2 text-[#22c55e] font-semibold text-sm hover:underline">
-        <span class="material-symbols-outlined text-xl">add_circle</span> Agregar experiencia laboral
+        <span class="icon text-xl">add_circle</span> Agregar experiencia laboral
       </button>
     </div>
 
@@ -320,15 +303,15 @@ $usuario = $_SESSION['usuario'];
   <!-- Botones de navegación -->
   <div class="flex justify-between items-center">
     <button id="btnAnterior" onclick="irSeccion(-1)" class="hidden flex items-center gap-2 px-6 py-3 border rounded-2xl font-semibold text-sm hover:bg-gray-50">
-      <span class="material-symbols-outlined">arrow_back</span> Anterior
+      <span class="icon">arrow_back</span> Anterior
     </button>
     <div></div>
     <button id="btnSiguiente" onclick="irSeccion(1)"
             class="flex items-center gap-2 px-8 py-3 bg-[#22c55e] text-white rounded-2xl font-bold text-sm hover:bg-[#16a34a] transition-colors">
-      Siguiente <span class="material-symbols-outlined">arrow_forward</span>
+      Siguiente <span class="icon">arrow_forward</span>
     </button>
     <button id="btnEnviar" onclick="enviarPostulacion()" class="hidden flex items-center gap-2 px-8 py-3 bg-[#22c55e] text-white rounded-2xl font-bold text-sm hover:bg-[#16a34a] transition-colors">
-      <span class="material-symbols-outlined">send</span> Enviar postulación
+      <span class="icon">send</span> Enviar postulación
     </button>
   </div>
 
@@ -472,7 +455,7 @@ function agregarExp() {
     div.innerHTML = `
         <button onclick="document.getElementById('exp_${id}').remove()"
                 class="absolute top-3 right-3 text-gray-400 hover:text-red-500">
-            <span class="material-symbols-outlined text-xl">delete</span>
+            <span class="icon text-xl">delete</span>
         </button>
         <p class="font-semibold text-sm mb-4 text-[#22c55e]">Experiencia ${id + 1}</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -575,7 +558,7 @@ async function enviarPostulacion() {
         const el = document.getElementById('msgFinal');
         el.innerHTML = `
             <div class="text-center">
-                <span class="material-symbols-outlined text-5xl text-[#22c55e]">check_circle</span>
+                <span class="icon text-5xl text-[#22c55e]">check_circle</span>
                 <h3 class="text-xl font-bold mt-3">¡Postulación enviada correctamente!</h3>
                 <p class="text-gray-600 mt-2">Tu puntaje técnico: <strong>${data.puntaje}/100</strong></p>
                 <p class="text-gray-500 text-sm mt-2">Un administrador revisará tu documentación. Te notificaremos por email cuando tu perfil sea aprobado.</p>
