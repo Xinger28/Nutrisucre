@@ -98,6 +98,11 @@ function listarPublicos(): void {
     $where = ["s.estado = 'Aprobado'"];
     $params = [];
 
+    if (!empty($_GET['buscar'])) {
+        $where[]  = '(s.titulo LIKE ? OR s.descripcion LIKE ?)';
+        $params[] = '%' . $_GET['buscar'] . '%';
+        $params[] = '%' . $_GET['buscar'] . '%';
+    }
     if (!empty($_GET['categoria'])) {
         $where[]  = 's.categoria = ?';
         $params[] = $_GET['categoria'];
@@ -111,13 +116,32 @@ function listarPublicos(): void {
         $params[] = $_GET['modalidad'];
     }
 
+    $orden = $_GET['orden'] ?? 'recientes';
+    $orderBy = match ($orden) {
+        'precio_asc'        => 's.precio ASC',
+        'precio_desc'       => 's.precio DESC',
+        'mejor_calificados' => 'COALESCE(np.rating, 5.0) DESC, s.created_at DESC',
+        'mas_utilizados'    => 'COALESCE(sol_count.cant_solicitudes, 0) DESC, s.created_at DESC',
+        'recientes'         => 's.created_at DESC',
+        default             => 's.created_at DESC'
+    };
+
     $whereSQL = implode(' AND ', $where);
     $stmt = $db->prepare("
-        SELECT s.*, u.nombre AS nutricionista_nombre
+        SELECT s.*, u.nombre AS nutricionista_nombre,
+               COALESCE(np.rating, 5.0) AS nutricionista_rating,
+               COALESCE(sol_count.cant_solicitudes, 0) AS total_solicitudes
         FROM servicios s
         JOIN usuarios u ON u.id = s.nutricionista_id
+        LEFT JOIN nutricionistas np ON np.usuario_id = s.nutricionista_id
+        LEFT JOIN (
+            SELECT servicio_id, COUNT(*) AS cant_solicitudes
+            FROM solicitudes
+            WHERE estado = 'Aceptada'
+            GROUP BY servicio_id
+        ) sol_count ON sol_count.servicio_id = s.id
         WHERE $whereSQL
-        ORDER BY s.precio ASC
+        ORDER BY $orderBy
     ");
     $stmt->execute($params);
     responderJSON($stmt->fetchAll());

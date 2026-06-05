@@ -1,11 +1,11 @@
 -- ============================================================
---  NutriSucre — SQL Completo para Render/Producción
---  Ejecutar este archivo una sola vez en el gestor de la BD
---  Orden: usuarios → nutricionistas → citas → sprints
+--  NutriSucre — SQL Consolidado Completo (Sprint 1, 2 y 3)
+--  Ejecutar este archivo para inicializar o restablecer la BD
 -- ============================================================
 
+
 -- ─────────────────────────────────────────
---  Sprint 1: Tabla usuarios
+--  Tabla usuarios (Pacientes, Nutricionistas, Administradores)
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS usuarios (
     id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 -- ─────────────────────────────────────────
---  Tabla nutricionistas (info extendida)
+--  Tabla nutricionistas (Información profesional extendida)
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS nutricionistas (
     id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,11 +63,11 @@ CREATE TABLE IF NOT EXISTS citas (
     FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_citas_disponibilidad
+CREATE INDEX idx_citas_disponibilidad
     ON citas(nutricionista_id, fecha, hora, estado);
 
 -- ─────────────────────────────────────────
---  Seguimiento de progreso
+--  Tabla de seguimiento de progreso
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS seguimiento (
     id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -82,11 +82,12 @@ CREATE TABLE IF NOT EXISTS seguimiento (
     nota        TEXT DEFAULT NULL,
     notas       TEXT DEFAULT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (paciente_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    FOREIGN KEY (paciente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_paciente_fecha (paciente_id, fecha)
 );
 
 -- ─────────────────────────────────────────
---  Planes nutricionales
+--  Tabla de planes nutricionales
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS planes (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -108,7 +109,7 @@ CREATE TABLE IF NOT EXISTS planes (
 );
 
 -- ─────────────────────────────────────────
---  Reseñas
+--  Tabla de reseñas
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS resenas (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,14 +119,14 @@ CREATE TABLE IF NOT EXISTS resenas (
     calificacion        TINYINT NOT NULL CHECK (calificacion BETWEEN 1 AND 5),
     comentario          TEXT DEFAULT NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unica_resena (paciente_id, cita_id),
+    UNIQUE KEY uq_resenia_cita (cita_id),
     FOREIGN KEY (paciente_id)      REFERENCES usuarios(id) ON DELETE CASCADE,
     FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE,
     FOREIGN KEY (cita_id)          REFERENCES citas(id) ON DELETE SET NULL
 );
 
 -- ─────────────────────────────────────────
---  Postulaciones de nutricionistas
+--  Tabla de postulaciones de nutricionistas
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS postulaciones (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -171,7 +172,7 @@ CREATE TABLE IF NOT EXISTS postulaciones (
 );
 
 -- ─────────────────────────────────────────
---  Disponibilidad del nutricionista
+--  Tabla de disponibilidad del nutricionista
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS disponibilidad (
     id                INT AUTO_INCREMENT PRIMARY KEY,
@@ -183,7 +184,7 @@ CREATE TABLE IF NOT EXISTS disponibilidad (
 );
 
 -- ─────────────────────────────────────────
---  Sprint 2: Servicios (Gestión de Productos/Servicios)
+--  Tabla de servicios (Sprint 2)
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS servicios (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -215,9 +216,31 @@ CREATE TABLE IF NOT EXISTS servicios (
     INDEX idx_nutricionista (nutricionista_id)
 );
 
+-- ─────────────────────────────────────────
+--  Tabla de solicitudes (Sprint 3)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS solicitudes (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    paciente_id         INT NOT NULL,
+    servicio_id         INT NOT NULL,
+    precio_historico    DECIMAL(8,2) NOT NULL,
+    motivo_consulta     TEXT NOT NULL,
+    peso_actual         DECIMAL(5,2) DEFAULT NULL,
+    altura_actual       DECIMAL(5,2) DEFAULT NULL,
+    condiciones_medicas TEXT DEFAULT NULL,
+    estado              ENUM('Pendiente', 'Aceptada', 'Rechazada') DEFAULT 'Pendiente',
+    respuesta_ofertante TEXT DEFAULT NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE CASCADE,
+    INDEX idx_solicitud_estado (estado),
+    INDEX idx_solicitud_paciente (paciente_id)
+);
+
 -- ============================================================
---  DATOS DE PRUEBA
---  password de todos los usuarios demo = "123456"
+--  DATOS DE PRUEBA / SEMILLA
+--  Contraseña por defecto para todos: "123456"
 -- ============================================================
 
 INSERT INTO usuarios (nombre, email, password, rol) VALUES
@@ -276,7 +299,7 @@ INSERT INTO disponibilidad (nutricionista_id, dia_semana, hora_inicio, hora_fin)
 (3, 0, '08:00', '16:00'), (3, 1, '08:00', '16:00'), (3, 2, '08:00', '16:00'),
 (3, 3, '08:00', '16:00'), (3, 4, '08:00', '16:00');
 
--- Servicios Sprint 2
+-- Servicios registrados (Sprint 2)
 INSERT INTO servicios (nutricionista_id, titulo, descripcion, categoria, precio, duracion_semanas, modalidad, incluye, estado) VALUES
 (3, 'Plan de Control de Peso Intensivo',
  'Programa estructurado de 8 semanas enfocado en reducción de peso saludable mediante alimentación balanceada y seguimiento semanal.',
@@ -307,3 +330,9 @@ INSERT INTO servicios (nutricionista_id, titulo, descripcion, categoria, precio,
 UPDATE servicios SET motivo_rechazo =
     'El servicio no cumple con los estándares mínimos: duración insuficiente (1 semana), precio no justificado y descripción genérica. Amplíe el programa a mínimo 4 semanas con seguimiento profesional.'
 WHERE titulo = 'Dieta Keto Express 7 días';
+
+-- Solicitudes de prueba (Sprint 3)
+INSERT INTO solicitudes (paciente_id, servicio_id, precio_historico, motivo_consulta, peso_actual, altura_actual, condiciones_medicas, estado, respuesta_ofertante) VALUES
+(2, 1, 350.00, 'Quiero reducir grasa abdominal y mejorar mis hábitos de alimentación diarios.', 72.50, 165.00, 'Ninguna', 'Pendiente', NULL),
+(2, 2, 480.00, 'Necesito preparar mi dieta para una maratón de 10K el próximo mes.', 70.00, 165.00, 'Alergia al maní', 'Aceptada', '¡Excelente! Vamos a trabajar en tu rendimiento y a planificar tu hidratación.'),
+(2, 3, 420.00, 'Controlar mis niveles de glucemia ya que fui diagnosticada recientemente.', 71.00, 165.00, 'Diabetes Tipo 2, hipertensión leve', 'Rechazada', 'Por el momento no tengo disponibilidad para nuevos pacientes clínicos con estas patologías. Te sugiero contactar al Dr. Soliz.');
