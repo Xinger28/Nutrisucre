@@ -245,6 +245,12 @@ function mostrarMsg(txt, tipo) {
     setTimeout(() => el.classList.add('hidden'), 5000);
 }
 function ocultarMsg() { document.getElementById('msgGlobal').classList.add('hidden'); }
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'register') {
+        mostrarTab('register');
+    }
+});
 document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     !document.getElementById('formLogin').classList.contains('hidden') ? login() : registrar();

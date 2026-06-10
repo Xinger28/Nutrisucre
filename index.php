@@ -38,19 +38,17 @@ $usuarioLogueado = $_SESSION['usuario'] ?? null;
 
   <!-- Navbar -->
   <nav class="glass-nav fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='index.php'">
       <div class="w-9 h-9 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-xl flex items-center justify-center shadow-lg">
         <span class="icon icon-fill text-white text-lg" style="font-size:18px">nutrition</span>
       </div>
       <span class="text-xl font-black tracking-tight text-[#1c1c1e]">NutriSucre</span>
     </div>
     
-    <div class="flex items-center gap-4">
-      <a href="#especialistas" class="text-sm font-semibold text-gray-600 hover:text-green-600 transition-colors">Especialistas</a>
-      <a href="#testimonios" class="text-sm font-semibold text-gray-600 hover:text-green-600 transition-colors hidden sm:block">Opiniones</a>
-      
+    <div class="flex items-center gap-3">
       <?php if ($usuarioLogueado): ?>
-        <a href="dashboard.php" class="ios-btn py-2 px-4 text-xs">Panel Control</a>
+        <a href="dashboard.php" class="ios-btn py-2 px-4 text-xs">Panel de Control</a>
+        <a onclick="logout()" class="ios-btn-ghost py-2 px-4 text-xs border border-red-200 text-red-500 hover:bg-red-100/30 hover:text-red-600 cursor-pointer">Cerrar Sesión</a>
       <?php else: ?>
         <a href="login.php" class="ios-btn-ghost py-2 px-4 text-xs">Iniciar Sesión</a>
         <a href="login.php?tab=register" class="ios-btn py-2 px-4 text-xs">Registrarse</a>
@@ -352,6 +350,7 @@ $usuarioLogueado = $_SESSION['usuario'] ?? null;
   let nutriSeleccionado = null;
   let slotSeleccionado = null;
   let usuarioAutenticado = <?= $usuarioLogueado ? 'true' : 'false' ?>;
+  let rolUsuario = '<?= $usuarioLogueado ? $usuarioLogueado['rol'] : '' ?>';
   let serviciosNutri = [];
 
   // Al cargar, inicializar buscador y lista de profesionales
@@ -709,10 +708,20 @@ $usuarioLogueado = $_SESSION['usuario'] ?? null;
 
   function irRegistroProfesional() {
       if (usuarioAutenticado) {
-          window.location.href = 'registro_nutricionista.php';
+          if (rolUsuario === 'Paciente') {
+              alert('Tu cuenta actual es de Paciente. Para unirte al equipo como especialista debes registrarte con una cuenta de Nutricionista.');
+              window.location.href = 'login.php?tab=register';
+          } else {
+              window.location.href = 'registro_nutricionista.php';
+          }
       } else {
-          window.location.href = 'login.php';
+          window.location.href = 'login.php?tab=register';
       }
+  }
+
+  async function logout() {
+      await fetch('api/auth.php?accion=logout', { method: 'POST' });
+      window.location.reload();
   }
   </script>
 </body>
