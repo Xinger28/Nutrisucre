@@ -93,7 +93,6 @@ function listar(): void {
 //  Para la página buscar.php
 // ─────────────────────────────────────────
 function listarPublicos(): void {
-    requireAuth();
     $db   = getDB();
     $where = ["s.estado = 'Aprobado'"];
     $params = [];

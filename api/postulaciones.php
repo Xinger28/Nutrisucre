@@ -24,7 +24,6 @@ match($metodo) {
 
 // ─── Horas disponibles de un nutricionista en una fecha con estado ───────
 function horasDisponibles(): void {
-    requireAuth();
     $db      = getDB();
     $nutriId = intval($_GET['nutri_id'] ?? 0);
     $fecha   = $_GET['fecha'] ?? '';
