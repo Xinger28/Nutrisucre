@@ -117,6 +117,23 @@ if (!empty($_SESSION['usuario'])) { header('Location: dashboard.php'); exit; }
           </button>
         </div>
       </div>
+      <!-- Campos específicos de Paciente -->
+      <div id="patient_fields" class="space-y-4">
+        <div class="space-y-1">
+          <label class="text-[13px] font-semibold text-[#48484a] pl-1">Carnet de Identidad (CI) <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="icon absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8e8e93]" style="font-size:20px">badge</span>
+            <input id="reg_ci" type="text" placeholder="Ej: 1234567 CH" class="ios-input pl-11">
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-[13px] font-semibold text-[#48484a] pl-1">Número de Celular <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="icon absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8e8e93]" style="font-size:20px">call</span>
+            <input id="reg_celular" type="text" placeholder="Ej: 71234567" class="ios-input pl-11">
+          </div>
+        </div>
+      </div>
       <div class="space-y-2">
         <label class="text-[13px] font-semibold text-[#48484a] pl-1">Tipo de cuenta</label>
         <div class="grid grid-cols-2 gap-3">
@@ -157,6 +174,14 @@ function selectTipo(tipo) {
     document.getElementById('reg_rol').value = tipo;
     document.getElementById('cardPaciente').classList.toggle('sel', tipo === 'Paciente');
     document.getElementById('cardNutri').classList.toggle('sel', tipo === 'Nutricionista');
+    
+    // Mostrar u ocultar campos de paciente
+    const patientFields = document.getElementById('patient_fields');
+    if (tipo === 'Paciente') {
+        patientFields.classList.remove('hidden');
+    } else {
+        patientFields.classList.add('hidden');
+    }
 }
 function togglePass(id, btn) {
     const input = document.getElementById(id);
@@ -189,13 +214,19 @@ async function registrar() {
     const email  = document.getElementById('reg_email').value.trim();
     const pass   = document.getElementById('reg_pass').value;
     const rol    = document.getElementById('reg_rol').value;
+    const ci     = document.getElementById('reg_ci').value.trim();
+    const celular = document.getElementById('reg_celular').value.trim();
+
     if (!nombre || !email || !pass) return mostrarMsg('Completa todos los campos', 'error');
+    if (rol === 'Paciente' && (!ci || !celular)) {
+        return mostrarMsg('CI y celular son obligatorios para pacientes', 'error');
+    }
     if (pass.length < 6) return mostrarMsg('La contraseña debe tener al menos 6 caracteres', 'error');
     setLoading('btnReg', true);
     try {
         const res  = await fetch('api/auth.php?accion=register', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ nombre, email, password: pass, rol })
+            body: JSON.stringify({ nombre, email, password: pass, rol, ci: rol === 'Paciente' ? ci : '', celular: rol === 'Paciente' ? celular : '' })
         });
         const data = await res.json();
         if (data.ok) {

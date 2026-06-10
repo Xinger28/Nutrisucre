@@ -38,12 +38,13 @@ $nombre  = $usuario['nombre'];
   <div id="statsAdmin" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
 
   <!-- Tabs -->
-  <div class="seg-control max-w-sm">
+  <div class="seg-control max-w-lg">
     <button class="seg-btn active" id="tabPostulaciones" onclick="cambiarTab('Postulaciones')">Postulaciones</button>
     <button class="seg-btn" id="tabUsuarios"      onclick="cambiarTab('Usuarios')">Usuarios</button>
     <button class="seg-btn" id="tabServicios"     onclick="cambiarTab('Servicios')">
       Servicios <span id="badgePend" class="hidden bg-red-500 text-white text-[10px] rounded-full px-1.5 ml-0.5 font-bold"></span>
     </button>
+    <button class="seg-btn" id="tabCitas"         onclick="cambiarTab('Citas')">Citas Globales</button>
   </div>
 
   <div id="feedbackGlobal" class="hidden rounded-2xl px-5 py-4 text-[14px] font-semibold text-center"></div>
@@ -95,7 +96,36 @@ $nombre  = $usuario['nombre'];
     </div>
     <div id="listaSrvsAdmin" class="space-y-3"></div>
   </div>
+
+  <!-- ══ CITAS GLOBALES ══ -->
+  <div id="panelCitas" class="tab-panel space-y-4">
+    <div class="flex gap-2 flex-wrap items-center justify-between">
+      <div class="flex gap-2 flex-wrap" id="filtrosCitas">
+        <button onclick="cargarCitasAdmin('')" class="chip active" id="chipCita_all">Todas</button>
+        <button onclick="cargarCitasAdmin('pendiente_confirmacion')" class="chip" id="chipCita_pend">⏳ Pendientes</button>
+        <button onclick="cargarCitasAdmin('confirmada')" class="chip" id="chipCita_conf">✅ Confirmadas</button>
+        <button onclick="cargarCitasAdmin('rechazada')" class="chip" id="chipCita_rech">❌ Rechazadas</button>
+        <button onclick="cargarCitasAdmin('cancelada')" class="chip" id="chipCita_canc">🚫 Canceladas</button>
+      </div>
+    </div>
+    <div id="listaCitasAdmin" class="space-y-3"></div>
+  </div>
 </main>
+
+<!-- ══ MODAL: Ver Comprobante ══ -->
+<div id="modalComprobante" class="ios-modal-bg" onclick="if(event.target===this)cerrarModalComprobante()">
+  <div class="ios-modal max-w-lg p-5">
+    <div class="flex justify-between items-center mb-4">
+      <p class="font-bold text-[18px]">Comprobante de Pago</p>
+      <button onclick="cerrarModalComprobante()" class="ios-btn-icon"><span class="icon">close</span></button>
+    </div>
+    <div class="text-center">
+      <img id="imgComprobante" src="" class="max-h-[60vh] mx-auto rounded-xl object-contain border">
+      <iframe id="pdfComprobante" src="" class="w-full h-[60vh] rounded-xl border hidden"></iframe>
+      <p id="txtNoComprobante" class="text-gray-500 py-8 hidden">No hay comprobante cargado para esta cita.</p>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL: Detalle Postulación ══ -->
 <div id="modalPost" class="ios-modal-bg" onclick="if(event.target===this)cerrarModalPost()">
@@ -138,6 +168,21 @@ $nombre  = $usuario['nombre'];
           <option>Paciente</option><option>Nutricionista</option><option>Administrador</option>
         </select>
       </div>
+      <div>
+        <label class="text-[13px] font-semibold text-[#48484a] pl-1 block mb-2">Carnet de Identidad (CI)</label>
+        <input id="campo_ci" type="text" class="ios-input" placeholder="Ej: 1234567 CH">
+      </div>
+      <div>
+        <label class="text-[13px] font-semibold text-[#48484a] pl-1 block mb-2">Celular</label>
+        <input id="campo_celular" type="text" class="ios-input" placeholder="Ej: 71234567">
+      </div>
+      <div>
+        <label class="text-[13px] font-semibold text-[#48484a] pl-1 block mb-2">Estado</label>
+        <select id="campo_estado" class="ios-input">
+          <option value="activo">Activo</option>
+          <option value="bloqueado">Bloqueado</option>
+        </select>
+      </div>
       <div id="msgModalUser" class="hidden rounded-2xl px-4 py-3 text-[13px] font-semibold"></div>
     </div>
     <div class="px-6 pb-6 flex gap-3">
@@ -164,10 +209,10 @@ $nombre  = $usuario['nombre'];
 let todosUsers=[], todasPosts=[], idElimUser=null;
 const ROL_BADGE={'Administrador':'badge badge-purple','Nutricionista':'badge badge-blue','Paciente':'badge badge-green'};
 
-document.addEventListener('DOMContentLoaded',()=>{ cargarStats(); cargarPosts(''); cargarUsuarios(); cargarSrvsAdmin(''); });
+document.addEventListener('DOMContentLoaded',()=>{ cargarStats(); cargarPosts(''); cargarUsuarios(); cargarSrvsAdmin(''); cargarCitasAdmin(''); });
 
 function cambiarTab(name) {
-    ['Postulaciones','Usuarios','Servicios'].forEach(t=>{
+    ['Postulaciones','Usuarios','Servicios','Citas'].forEach(t=>{
         document.getElementById('panel'+t).classList.remove('activo');
         document.getElementById('tab'+t).classList.remove('active');
     });
@@ -313,13 +358,20 @@ function renderUsers(lista) {
     if(!lista.length) { c.innerHTML='<div class="px-5 py-8 text-center text-[#8e8e93] text-[14px]">No se encontraron usuarios.</div>'; return; }
     c.innerHTML=lista.map(u=>{
         const fecha=new Date(u.created_at).toLocaleDateString('es-BO',{day:'2-digit',month:'short',year:'numeric'});
+        const est = u.estado || 'activo';
+        const estBadge = est === 'bloqueado' ? 'badge-red' : 'badge-green';
+        const isBlocked = est === 'bloqueado';
         return `<div class="row-user">
             <div class="flex-1 min-w-0">
                 <p class="font-semibold text-[14px] truncate">${u.nombre}</p>
-                <p class="text-[12px] text-[#8e8e93] truncate">${u.email} · ${fecha}</p>
+                <p class="text-[12px] text-[#8e8e93] truncate">${u.email} ${u.ci ? '· CI: '+u.ci : ''} ${u.celular ? '· Cel: '+u.celular : ''} · ${fecha}</p>
             </div>
             <div class="flex items-center gap-3 ml-3">
                 <span class="${ROL_BADGE[u.rol]||'badge badge-gray'}">${u.rol}</span>
+                <span class="badge ${estBadge}">${est}</span>
+                <button onclick="toggleEstadoUsuario(${u.id})" class="ios-btn-icon" title="${isBlocked ? 'Habilitar usuario' : 'Bloquear usuario'}" style="border-color:${isBlocked ? '#22c55e' : '#fecaca'}">
+                    <span class="icon ${isBlocked ? 'text-[#22c55e]' : 'text-red-400'}">${isBlocked ? 'lock_open' : 'lock'}</span>
+                </button>
                 <button onclick="abrirEditarUser(${u.id})" class="ios-btn-icon" title="Editar">
                     <span class="icon text-[#22c55e]" style="font-size:18px">edit</span>
                 </button>
@@ -337,6 +389,9 @@ function abrirModalUser() {
     document.getElementById('campo_email').value='';
     document.getElementById('campo_pass').value='';
     document.getElementById('campo_rol').value='Paciente';
+    document.getElementById('campo_ci').value='';
+    document.getElementById('campo_celular').value='';
+    document.getElementById('campo_estado').value='activo';
     document.getElementById('labelPass').textContent='(obligatoria)';
     document.getElementById('msgModalUser').classList.add('hidden');
     document.getElementById('modalUser').classList.add('open');
@@ -349,22 +404,38 @@ function abrirEditarUser(id) {
     document.getElementById('campo_email').value=u.email;
     document.getElementById('campo_pass').value='';
     document.getElementById('campo_rol').value=u.rol;
+    document.getElementById('campo_ci').value=u.ci || '';
+    document.getElementById('campo_celular').value=u.celular || '';
+    document.getElementById('campo_estado').value=u.estado || 'activo';
     document.getElementById('labelPass').textContent='(vacío = no cambiar)';
     document.getElementById('msgModalUser').classList.add('hidden');
     document.getElementById('modalUser').classList.add('open');
 }
 function cerrarModalUser() { document.getElementById('modalUser').classList.remove('open'); }
+async function toggleEstadoUsuario(id) {
+    const u=todosUsers.find(x=>x.id===id); if(!u) return;
+    const nuevoEstado = (u.estado || 'activo') === 'bloqueado' ? 'activo' : 'bloqueado';
+    const body={id:u.id, nombre:u.nombre, email:u.email, rol:u.rol, ci:u.ci, celular:u.celular, estado:nuevoEstado};
+    const res=await fetch('api/usuarios.php',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(data.ok) { mostrarFeedback('✅ Estado del usuario cambiado a '+nuevoEstado,'ok'); cargarUsuarios(); }
+    else mostrarFeedback(data.error||'Error','error');
+}
 async function guardarUsuario() {
     const id=document.getElementById('editId').value;
     const nombre=document.getElementById('campo_nombre').value.trim();
     const email=document.getElementById('campo_email').value.trim();
     const pass=document.getElementById('campo_pass').value;
     const rol=document.getElementById('campo_rol').value;
+    const ci=document.getElementById('campo_ci').value.trim();
+    const celular=document.getElementById('campo_celular').value.trim();
+    const estado=document.getElementById('campo_estado').value;
+    
     if(!nombre||!email) return mostrarMsgUser('Nombre y email son obligatorios');
     if(!id&&!pass) return mostrarMsgUser('La contraseña es obligatoria para nuevos usuarios');
     const btn=document.getElementById('btnGuardarUser');
     btn.disabled=true; btn.textContent='Guardando...';
-    const body={nombre,email,rol}; if(id) body.id=parseInt(id); if(pass) body.password=pass;
+    const body={nombre,email,rol,ci,celular,estado}; if(id) body.id=parseInt(id); if(pass) body.password=pass;
     const res=await fetch('api/usuarios.php',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const data=await res.json();
     btn.disabled=false; btn.textContent='Guardar';
@@ -430,6 +501,165 @@ function mostrarFeedback(txt,tipo='ok') {
     el.classList.remove('hidden');
     showToast(txt);
     setTimeout(()=>el.classList.add('hidden'),5000);
+}
+
+// ── Citas Admin ──
+async function cargarCitasAdmin(estado) {
+    const c = document.getElementById('listaCitasAdmin');
+    if (!c) return;
+    c.innerHTML = '<p class="text-center text-[#8e8e93] text-[14px] py-8">Cargando citas...</p>';
+    
+    // Activar chip
+    const chips = ['all', 'pend', 'conf', 'rech', 'canc'];
+    chips.forEach(ch => {
+        const btn = document.getElementById('chipCita_' + ch);
+        if (btn) btn.classList.remove('active');
+    });
+    const activeChip = estado === '' ? 'all' : estado === 'pendiente_confirmacion' ? 'pend' : estado === 'confirmada' ? 'conf' : estado === 'rechazada' ? 'rech' : 'canc';
+    const btnActive = document.getElementById('chipCita_' + activeChip);
+    if (btnActive) btnActive.classList.add('active');
+
+    try {
+        const res = await fetch('api/citas.php');
+        const data = await res.json();
+        if (data.error) {
+            c.innerHTML = `<div class="ios-card p-10 text-center text-red-500 text-[14px]">Error: ${data.error}</div>`;
+            return;
+        }
+        
+        let filtradas = data;
+        if (estado) {
+            filtradas = data.filter(cit => cit.estado === estado);
+        }
+        
+        renderCitasAdmin(filtradas);
+    } catch (e) {
+        c.innerHTML = '<div class="ios-card p-10 text-center text-red-500 text-[14px]">Error de conexión al cargar citas.</div>';
+    }
+}
+
+function renderCitasAdmin(lista) {
+    const c = document.getElementById('listaCitasAdmin');
+    if (!lista.length) {
+        c.innerHTML = '<div class="ios-card p-10 text-center text-[#8e8e93] text-[14px]">No hay citas registradas en este estado.</div>';
+        return;
+    }
+    
+    const EST_BADGE = {
+        'pendiente_confirmacion': 'badge-yellow',
+        'pendiente': 'badge-yellow',
+        'confirmada': 'badge-green',
+        'rechazada': 'badge-red',
+        'cancelada': 'badge-gray'
+    };
+    const EST_TXT = {
+        'pendiente_confirmacion': 'Pendiente de Pago',
+        'pendiente': 'Pendiente',
+        'confirmada': 'Confirmada',
+        'rechazada': 'Rechazada',
+        'cancelada': 'Cancelada'
+    };
+
+    c.innerHTML = lista.map(cit => {
+        const fecha = new Date(cit.fecha + 'T00:00:00').toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
+        const horaStr = cit.hora;
+        const comprobanteBtn = cit.comprobante_pago 
+            ? `<button onclick="abrirModalComprobante('${cit.comprobante_pago}')" class="badge badge-blue cursor-pointer flex items-center gap-1">
+                 <span class="icon" style="font-size:12px">receipt</span> Ver Pago (${cit.metodo_pago})
+               </button>`
+            : '<span class="text-xs text-gray-400">Sin comprobante</span>';
+
+        return `<div class="ios-card p-5 space-y-3">
+            <div class="flex justify-between items-start flex-wrap gap-2">
+                <div>
+                    <span class="badge ${EST_BADGE[cit.estado]}">${EST_TXT[cit.estado]}</span>
+                    <h4 class="font-black text-[16px] mt-1">${cit.servicio_titulo || 'Consulta de Nutrición'}</h4>
+                    <p class="text-xs text-gray-500">Fecha: ${fecha} · Hora: ${horaStr} · Precio: Bs. ${parseFloat(cit.precio).toFixed(2)}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[13px] font-bold text-[#1c1c1e]">Paciente: ${cit.paciente}</p>
+                    <p class="text-[11px] text-[#8e8e93]">Cel: ${cit.paciente_celular || '—'} · ${cit.paciente_email}</p>
+                </div>
+            </div>
+            
+            <div class="border-t pt-3 flex justify-between items-center flex-wrap gap-2 text-xs">
+                <div>
+                    <p class="text-gray-500">Especialista: <strong class="text-gray-700">${cit.nutricionista}</strong> (${cit.especialidad})</p>
+                    ${cit.motivo_rechazo ? `<p class="text-red-500 mt-1 font-semibold">Motivo rechazo: ${cit.motivo_rechazo}</p>` : ''}
+                </div>
+                <div class="flex items-center gap-3">
+                    ${comprobanteBtn}
+                </div>
+            </div>
+            
+            <!-- Acciones de auditoría para Admin -->
+            <div class="flex gap-2 justify-end pt-2 border-t border-[rgba(0,0,0,0.03)] flex-wrap">
+                ${cit.estado === 'pendiente_confirmacion' || cit.estado === 'pendiente' 
+                    ? `<button onclick="responderCitaAdmin(${cit.id}, 'confirmada')" class="ios-btn py-1.5 px-3 text-[11px]" style="border-radius:8px;background:#22c55e">Aprobar Pago</button>
+                       <button onclick="responderCitaAdmin(${cit.id}, 'rechazada')" class="ios-btn py-1.5 px-3 text-[11px]" style="border-radius:8px;background:#ef4444;box-shadow:none">Rechazar Pago</button>`
+                    : ''
+                }
+                ${cit.estado === 'confirmada'
+                    ? `<button onclick="responderCitaAdmin(${cit.id}, 'cancelada')" class="ios-btn-ghost py-1.5 px-3 text-[11px]" style="border-radius:8px;color:#ef4444;border-color:#fca5a5">Cancelar Cita</button>`
+                    : ''
+                }
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function responderCitaAdmin(id, estado, motivo = '') {
+    if (estado === 'rechazada' && !motivo) {
+        motivo = prompt('Ingresa el motivo del rechazo del pago/reserva (mínimo 5 caracteres):');
+        if (motivo === null) return;
+        if (motivo.trim().length < 5) {
+            alert('El motivo de rechazo debe tener al menos 5 caracteres.');
+            return;
+        }
+    }
+    
+    try {
+        const res = await fetch('api/citas.php?accion=responder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, estado, motivo_rechazo: motivo })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            mostrarFeedback('✅ Cita actualizada correctamente.', 'ok');
+            cargarCitasAdmin('');
+            cargarStats();
+        } else {
+            mostrarFeedback(data.error || 'Error al actualizar cita', 'error');
+        }
+    } catch (e) {
+        mostrarFeedback('Error de conexión con el servidor.', 'error');
+    }
+}
+
+function abrirModalComprobante(url) {
+    const img = document.getElementById('imgComprobante');
+    const pdf = document.getElementById('pdfComprobante');
+    const none = document.getElementById('txtNoComprobante');
+    
+    img.classList.add('hidden');
+    pdf.classList.add('hidden');
+    none.classList.add('hidden');
+    
+    if (!url) {
+        none.classList.remove('hidden');
+    } else if (url.toLowerCase().endsWith('.pdf')) {
+        pdf.src = url;
+        pdf.classList.remove('hidden');
+    } else {
+        img.src = url;
+        img.classList.remove('hidden');
+    }
+    document.getElementById('modalComprobante').classList.add('open');
+}
+
+function cerrarModalComprobante() {
+    document.getElementById('modalComprobante').classList.remove('open');
 }
 </script>
 </body>

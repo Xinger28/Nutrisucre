@@ -40,9 +40,9 @@ function accionLogin(array $body): void {
 
     $db = getDB();
 
-    // Buscamos por email O por nombre (igual que el login.html original)
+    // Buscamos por email O por nombre (incluyendo ci, celular, estado)
     $stmt = $db->prepare("
-        SELECT id, nombre, email, password, rol
+        SELECT id, nombre, email, password, rol, ci, celular, estado
         FROM usuarios
         WHERE email = :id OR nombre = :id2
         LIMIT 1
@@ -55,12 +55,19 @@ function accionLogin(array $body): void {
         responderJSON(['error' => 'Usuario o contraseña incorrectos'], 401);
     }
 
+    // Verificar si está bloqueado
+    if ($usuario['estado'] === 'bloqueado') {
+        responderJSON(['error' => 'Tu cuenta ha sido bloqueada por el administrador. Ponte en contacto con soporte.'], 403);
+    }
+
     // Guardamos en sesión (sin la contraseña por seguridad)
     $_SESSION['usuario'] = [
-        'id'     => $usuario['id'],
-        'nombre' => $usuario['nombre'],
-        'email'  => $usuario['email'],
-        'rol'    => $usuario['rol'],
+        'id'      => $usuario['id'],
+        'nombre'  => $usuario['nombre'],
+        'email'   => $usuario['email'],
+        'rol'     => $usuario['rol'],
+        'ci'      => $usuario['ci'] ?? '',
+        'celular' => $usuario['celular'] ?? '',
     ];
 
     responderJSON(['ok' => true, 'usuario' => $_SESSION['usuario']]);
@@ -74,10 +81,16 @@ function accionRegister(array $body): void {
     $email    = strtolower(trim($body['email'] ?? ''));
     $password = $body['password'] ?? '';
     $rol      = $body['rol'] ?? 'Paciente';
+    $ci       = trim($body['ci'] ?? '');
+    $celular  = trim($body['celular'] ?? '');
 
     // Validaciones básicas
     if (!$nombre || !$email || !$password) {
         responderJSON(['error' => 'Nombre, email y contraseña son obligatorios'], 400);
+    }
+    // Si es Paciente, exigir CI y celular obligatorios
+    if ($rol === 'Paciente' && (!$ci || !$celular)) {
+        responderJSON(['error' => 'El Carnet de Identidad (CI) y número de celular son obligatorios para pacientes'], 400);
     }
     if (strlen($password) < 6) {
         responderJSON(['error' => 'La contraseña debe tener al menos 6 caracteres'], 400);
@@ -102,12 +115,12 @@ function accionRegister(array $body): void {
     // Hashear la contraseña (NUNCA guardar texto plano)
     $hash = password_hash($password, PASSWORD_BCRYPT);
 
-    // Insertar usuario
+    // Insertar usuario (incluyendo ci y celular)
     $stmt = $db->prepare("
-        INSERT INTO usuarios (nombre, email, password, rol)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO usuarios (nombre, email, password, rol, ci, celular, estado)
+        VALUES (?, ?, ?, ?, ?, ?, 'activo')
     ");
-    $stmt->execute([$nombre, $email, $hash, $rol]);
+    $stmt->execute([$nombre, $email, $hash, $rol, $ci ?: null, $celular ?: null]);
     $nuevoId = $db->lastInsertId();
 
     // Si es nutricionista, crear su registro extendido

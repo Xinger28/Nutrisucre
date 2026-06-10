@@ -12,19 +12,127 @@ requireAuth();
 
 $db  = getDB();
 $id  = intval($_GET['id'] ?? 0);
+$accion = $_GET['accion'] ?? '';
+
+// ─── Guardar configuración de perfil y pagos (Nutricionista) ───
+if ($_SERVER['REQUEST_METHOD'] === 'PUT' || ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion === 'actualizar')) {
+    $usuario = requireAuth();
+    if ($usuario['rol'] !== 'Nutricionista') {
+        responderJSON(['error' => 'Solo nutricionistas pueden realizar esta acción'], 403);
+    }
+    
+    $body = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    
+    $stmt = $db->prepare("SELECT id FROM nutricionistas WHERE usuario_id = ?");
+    $stmt->execute([$usuario['id']]);
+    $nutri = $stmt->fetch();
+    if (!$nutri) {
+        responderJSON(['error' => 'Perfil de nutricionista no encontrado'], 404);
+    }
+    
+    $nutriId = $nutri['id'];
+    
+    $telefono = trim($body['telefono'] ?? '');
+    $whatsapp = trim($body['whatsapp'] ?? '');
+    $mostrar_correo = isset($body['mostrar_correo']) ? intval($body['mostrar_correo']) : 1;
+    $qr_code = trim($body['qr_code'] ?? '');
+    $titular_cuenta = trim($body['titular_cuenta'] ?? '');
+    $banco = trim($body['banco'] ?? '');
+    $nro_cuenta = trim($body['nro_cuenta'] ?? '');
+    $datos_transferencia_adicional = trim($body['datos_transferencia_adicional'] ?? '');
+    
+    $pago_qr_habilitado = isset($body['pago_qr_habilitado']) ? intval($body['pago_qr_habilitado']) : 0;
+    $pago_transferencia_habilitado = isset($body['pago_transferencia_habilitado']) ? intval($body['pago_transferencia_habilitado']) : 0;
+    $pago_deposito_habilitado = isset($body['pago_deposito_habilitado']) ? intval($body['pago_deposito_habilitado']) : 0;
+    
+    $foto = trim($body['foto'] ?? '');
+    $precio = floatval($body['precio'] ?? 120);
+    $descripcion_serv = trim($body['descripcion_serv'] ?? '');
+    
+    $upd = $db->prepare("
+        UPDATE nutricionistas SET
+            telefono = ?,
+            whatsapp = ?,
+            mostrar_correo = ?,
+            qr_code = ?,
+            titular_cuenta = ?,
+            banco = ?,
+            nro_cuenta = ?,
+            datos_transferencia_adicional = ?,
+            pago_qr_habilitado = ?,
+            pago_transferencia_habilitado = ?,
+            pago_deposito_habilitado = ?,
+            foto = ?,
+            precio = ?,
+            descripcion_serv = ?
+        WHERE id = ?
+    ");
+    $upd->execute([
+        $telefono ?: null,
+        $whatsapp ?: null,
+        $mostrar_correo,
+        $qr_code ?: null,
+        $titular_cuenta ?: null,
+        $banco ?: null,
+        $nro_cuenta ?: null,
+        $datos_transferencia_adicional ?: null,
+        $pago_qr_habilitado,
+        $pago_transferencia_habilitado,
+        $pago_deposito_habilitado,
+        $foto ?: null,
+        $precio,
+        $descripcion_serv ?: null,
+        $nutriId
+    ]);
+    
+    responderJSON(['ok' => true, 'mensaje' => 'Configuración de perfil y pagos guardada correctamente']);
+}
+
+// ─── Perfil del nutricionista logueado ──────────────────────────
+if ($accion === 'mi_perfil') {
+    $usuario = requireAuth();
+    if ($usuario['rol'] !== 'Nutricionista') {
+        responderJSON(['error' => 'Acceso denegado'], 403);
+    }
+    $stmt = $db->prepare("
+        SELECT n.*, u.nombre, u.email
+        FROM nutricionistas n
+        JOIN usuarios u ON u.id = n.usuario_id
+        WHERE n.usuario_id = ?
+    ");
+    $stmt->execute([$usuario['id']]);
+    $nutri = $stmt->fetch();
+    if (!$nutri) responderJSON(['error' => 'Perfil no encontrado'], 404);
+    responderJSON($nutri);
+}
 
 // ─── Detalle de un nutricionista ─────────────────────────────
 if ($id) {
+    // Si el usuario es el propio nutricionista o admin, permitir ver aunque no esté aprobado
+    $usuarioAuth = null;
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!empty($_SESSION['usuario'])) {
+        $usuarioAuth = $_SESSION['usuario'];
+    }
+
     $stmt = $db->prepare("
         SELECT n.*, u.nombre, u.email,
                (SELECT COUNT(*) FROM resenas r WHERE r.nutricionista_id = n.id) AS total_resenas
         FROM nutricionistas n
         JOIN usuarios u ON u.id = n.usuario_id
-        WHERE n.id = ? AND n.estado_verificacion = 'aprobado'
+        WHERE n.id = ?
     ");
     $stmt->execute([$id]);
     $nutri = $stmt->fetch();
     if (!$nutri) responderJSON(['error' => 'No encontrado'], 404);
+
+    // Si no está aprobado, verificar que el que lo pide sea admin o el propio nutri
+    if ($nutri['estado_verificacion'] !== 'aprobado') {
+        if (!$usuarioAuth || ($usuarioAuth['rol'] !== 'Administrador' && $nutri['usuario_id'] != $usuarioAuth['id'])) {
+            responderJSON(['error' => 'No autorizado para ver este perfil pendiente'], 403);
+        }
+    }
+
     responderJSON($nutri);
 }
 

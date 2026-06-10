@@ -43,7 +43,7 @@ function listar(): void {
     } else {
         // Admin ve todos
         $stmt = $db->query("
-            SELECT id, nombre, email, rol, created_at
+            SELECT id, nombre, email, rol, ci, celular, estado, created_at
             FROM usuarios
             ORDER BY created_at DESC
         ");
@@ -61,6 +61,13 @@ function crear(array $body): void {
     $email    = strtolower(trim($body['email'] ?? ''));
     $password = $body['password'] ?? '';
     $rol      = $body['rol'] ?? 'Paciente';
+
+    $ci       = trim($body['ci'] ?? '');
+    $celular  = trim($body['celular'] ?? '');
+    $estado   = $body['estado'] ?? 'activo';
+    if (!in_array($estado, ['activo', 'bloqueado'])) {
+        $estado = 'activo';
+    }
 
     if (!$nombre || !$email || !$password) {
         responderJSON(['error' => 'Nombre, email y contraseña son obligatorios'], 400);
@@ -81,10 +88,10 @@ function crear(array $body): void {
     $hash = password_hash($password, PASSWORD_BCRYPT);
 
     $stmt = $db->prepare("
-        INSERT INTO usuarios (nombre, email, password, rol)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO usuarios (nombre, email, password, rol, ci, celular, estado)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$nombre, $email, $hash, $rol]);
+    $stmt->execute([$nombre, $email, $hash, $rol, $ci ?: null, $celular ?: null, $estado]);
     $nuevoId = $db->lastInsertId();
 
     // Si el rol es Nutricionista, crear su perfil extendido automáticamente
@@ -110,6 +117,13 @@ function editar(array $body): void {
     $email  = strtolower(trim($body['email'] ?? ''));
     $rol    = $body['rol'] ?? '';
 
+    $ci       = trim($body['ci'] ?? '');
+    $celular  = trim($body['celular'] ?? '');
+    $estado   = $body['estado'] ?? 'activo';
+    if (!in_array($estado, ['activo', 'bloqueado'])) {
+        $estado = 'activo';
+    }
+
     if (!$id || !$nombre || !$email) {
         responderJSON(['error' => 'ID, nombre y email son obligatorios'], 400);
     }
@@ -126,11 +140,11 @@ function editar(array $body): void {
     // Si viene nueva contraseña, la hasheamos; si no, dejamos la existente
     if (!empty($body['password'])) {
         $hash = password_hash($body['password'], PASSWORD_BCRYPT);
-        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, email=?, password=?, rol=? WHERE id=?");
-        $stmt->execute([$nombre, $email, $hash, $rol, $id]);
+        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, email=?, password=?, rol=?, ci=?, celular=?, estado=? WHERE id=?");
+        $stmt->execute([$nombre, $email, $hash, $rol, $ci ?: null, $celular ?: null, $estado, $id]);
     } else {
-        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, email=?, rol=? WHERE id=?");
-        $stmt->execute([$nombre, $email, $rol, $id]);
+        $stmt = $db->prepare("UPDATE usuarios SET nombre=?, email=?, rol=?, ci=?, celular=?, estado=? WHERE id=?");
+        $stmt->execute([$nombre, $email, $rol, $ci ?: null, $celular ?: null, $estado, $id]);
     }
 
     responderJSON(['ok' => true, 'mensaje' => 'Usuario actualizado']);

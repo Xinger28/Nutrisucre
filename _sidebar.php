@@ -8,7 +8,10 @@ if (!isset($rol)) {
 }
 $navLinks = [
     ['dashboard.php',              'home',              'Inicio',                ['Paciente','Nutricionista','Administrador']],
-    ['buscar.php',                 'search',            'Buscar',                ['Paciente','Administrador']],
+    ['index.php',                  'search',            'Buscar Especialista',   ['Paciente','Administrador']],
+    ['citas.php',                  'calendar_month',    'Mis Citas',             ['Paciente']],
+    ['citas.php',                  'calendar_month',    'Citas Recibidas',       ['Nutricionista']],
+    ['citas.php',                  'calendar_month',    'Gestión de Citas',      ['Administrador']],
     ['progreso.php',               'monitoring',        'Mi Progreso',           ['Paciente']],
     ['planes.php',                 'restaurant_menu',   'Mis Planes',            ['Paciente']],
     ['servicios.php',              'medical_services',  'Mis Servicios',         ['Nutricionista']],

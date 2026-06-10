@@ -4,7 +4,7 @@
 //  POST ?accion=enviar  → paciente/nutri envía postulación
 //  GET                  → admin lista postulaciones
 //  PUT ?accion=revisar  → admin aprueba/rechaza
-//  GET ?accion=disponibilidad&nutri_id=X&fecha=Y → horas libres
+//  GET ?accion=disponibilidad&nutri_id=X&fecha=Y → horas con estado
 // ============================================================
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -19,10 +19,10 @@ match($metodo) {
     'GET' => listar(),
     'POST'=> enviar($body),
     'PUT' => revisar($body),
-    default => responderJSON(['error' => 'Metodo no permitido'], 405)
+    default => responderJSON(['error' => 'Método no permitido'], 405)
 };
 
-// ─── Horas disponibles de un nutricionista en una fecha ───────
+// ─── Horas disponibles de un nutricionista en una fecha con estado ───────
 function horasDisponibles(): void {
     requireAuth();
     $db      = getDB();
@@ -48,25 +48,43 @@ function horasDisponibles(): void {
     $nutri = $nStmt->fetch();
     $duracion = $nutri['duracion_consulta'] ?? 60;
 
-    // Obtener horas ya reservadas ese día
+    // Obtener horas ya reservadas ese día (excluyendo canceladas y rechazadas)
     $resStmt = $db->prepare("
-        SELECT TIME_FORMAT(hora,'%H:%i') AS hora
+        SELECT TIME_FORMAT(hora,'%H:%i') AS hora, estado
         FROM citas
-        WHERE nutricionista_id = ? AND fecha = ? AND estado != 'cancelada'
+        WHERE nutricionista_id = ? AND fecha = ? AND estado NOT IN ('cancelada', 'rechazada')
     ");
     $resStmt->execute([$nutriId, $fecha]);
-    $reservadas = array_column($resStmt->fetchAll(), 'hora');
+    $reservas = $resStmt->fetchAll();
 
-    // Generar slots disponibles
+    // Crear mapa hora -> estado cita
+    $mapReservas = [];
+    foreach ($reservas as $r) {
+        $mapReservas[$r['hora']] = $r['estado'];
+    }
+
+    // Generar slots con sus estados
     $slots = [];
     foreach ($bloques as $bloque) {
         $cursor = strtotime($bloque['hora_inicio']);
         $fin    = strtotime($bloque['hora_fin']);
         while ($cursor + $duracion * 60 <= $fin) {
             $hora = date('H:i', $cursor);
-            if (!in_array($hora, $reservadas)) {
-                $slots[] = $hora;
+            $estadoSlot = 'disponible';
+            
+            if (isset($mapReservas[$hora])) {
+                $estadoCita = $mapReservas[$hora];
+                if ($estadoCita === 'confirmada') {
+                    $estadoSlot = 'ocupado';
+                } elseif ($estadoCita === 'pendiente_confirmacion' || $estadoCita === 'pendiente') {
+                    $estadoSlot = 'pendiente';
+                }
             }
+            
+            $slots[] = [
+                'hora'   => $hora,
+                'estado' => $estadoSlot
+            ];
             $cursor += $duracion * 60;
         }
     }
@@ -209,7 +227,7 @@ function enviar(array $body): void {
         implode("\n", $alertas) ?: null,
     ]);
 
-    // Actualizar rol del usuario a Nutricionista
+    // Actualizar rol del usuario a Nutricionista (postulante)
     $db->prepare("UPDATE usuarios SET rol='Nutricionista' WHERE id=?")->execute([$usuario['id']]);
 
     responderJSON(['ok' => true, 'mensaje' => 'Postulación enviada. Estará disponible tras revisión administrativa.', 'puntaje' => $puntaje]);
@@ -233,7 +251,12 @@ function revisar(array $body): void {
 
     // Si aprobado: crear/actualizar el perfil del nutricionista
     if ($estado === 'aprobado') {
-        $post = $db->prepare("SELECT * FROM postulaciones WHERE id=?");
+        $post = $db->prepare("
+            SELECT p.*, u.nombre, u.email 
+            FROM postulaciones p
+            JOIN usuarios u ON u.id = p.usuario_id
+            WHERE p.id = ?
+        ");
         $post->execute([$id]);
         $p    = $post->fetch();
 
@@ -257,7 +280,7 @@ function revisar(array $body): void {
                     modalidad=?, idiomas=?,
                     duracion_consulta=?, max_pacientes_dia=?,
                     precio=?, estado_verificacion='aprobado', puntaje_tecnico=?,
-                    descripcion_serv=?
+                    descripcion_serv=?, telefono=?
                 WHERE usuario_id=?
             ");
         } else {
@@ -270,8 +293,8 @@ function revisar(array $body): void {
                    modalidad, idiomas,
                    duracion_consulta, max_pacientes_dia,
                    precio, rating, estado_verificacion, puntaje_tecnico,
-                   descripcion_serv)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,5.0,'aprobado',?,?)
+                   descripcion_serv, telefono)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,5.0,'aprobado',?,?,?)
             ");
         }
 
@@ -283,19 +306,39 @@ function revisar(array $body): void {
             $p['modalidad'], $p['idiomas'],
             $p['duracion_consulta'], $p['max_pacientes_dia'],
             $p['precio'], $p['puntaje_tecnico'],
-            $p['descripcion_serv']
+            $p['descripcion_serv'], $p['telefono']
         ];
         if ($nExiste) $params[] = $p['usuario_id'];
         else           array_unshift($params, $p['usuario_id']);
 
         $upd->execute($params);
-    } elseif ($estado === 'rechazado' || $estado === 'pendiente') {
-        $post = $db->prepare("SELECT usuario_id FROM postulaciones WHERE id=?");
+
+        // Habilitar rol del usuario como Nutricionista
+        $db->prepare("UPDATE usuarios SET rol='Nutricionista' WHERE id=?")->execute([$p['usuario_id']]);
+
+        // Enviar notificación por correo mock
+        $asunto = "¡Felicidades! Postulación Aprobada - NutriSucre";
+        $cuerpo = "Estimado/a " . $p['nombre'] . ",\n\nNos complace informarle que su postulación para formar parte de NutriSucre ha sido APROBADA.\n\nSu cuenta profesional ha sido habilitada con éxito. Ya puede iniciar sesión, configurar sus servicios en el catálogo, gestionar su disponibilidad en el calendario y establecer sus métodos de pago (QR, transferencia y cuenta bancaria) en su panel de administración.\n\n¡Bienvenido/a a bordo!\n\nAtentamente,\nEl Equipo de NutriSucre";
+        enviarCorreoMock($p['email'], $asunto, $cuerpo);
+
+    } elseif ($estado === 'rechazado') {
+        $post = $db->prepare("
+            SELECT p.*, u.nombre, u.email 
+            FROM postulaciones p
+            JOIN usuarios u ON u.id = p.usuario_id
+            WHERE p.id = ?
+        ");
         $post->execute([$id]);
         $p    = $post->fetch();
+        
         if ($p) {
-            $upd = $db->prepare("UPDATE nutricionistas SET estado_verificacion=? WHERE usuario_id=?");
-            $upd->execute([$estado, $p['usuario_id']]);
+            $upd = $db->prepare("UPDATE nutricionistas SET estado_verificacion='rechazado' WHERE usuario_id=?");
+            $upd->execute([$p['usuario_id']]);
+
+            // Enviar notificación por correo mock con las observaciones
+            $asunto = "Postulación Observada / Rechazada - NutriSucre";
+            $cuerpo = "Estimado/a " . $p['nombre'] . ",\n\nLe informamos que tras la revisión administrativa, su postulación para formar parte del equipo de NutriSucre ha sido rechazada debido a observaciones en su documentación o respuestas.\n\nDetalle de Observaciones:\n" . ($notas ?: 'Documentación incorrecta o inconsistente en el perfil.') . "\n\nPor favor, ingrese a la plataforma, modifique los datos necesarios en su panel de postulación y reenvíela para una nueva evaluación.\n\nAtentamente,\nEl Equipo de NutriSucre";
+            enviarCorreoMock($p['email'], $asunto, $cuerpo);
         }
     }
 
@@ -310,8 +353,8 @@ function calcularPuntajeTecnico(array $body): int {
     $puntaje = 0;
     for ($i = 1; $i <= 5; $i++) {
         $resp = strtolower($body["resp_tecnica_$i"] ?? '');
-        if (strlen($resp) > 50)  $puntaje += 8;   // respuesta larga
-        if (strlen($resp) > 120) $puntaje += 4;   // respuesta muy larga
+        if (strlen($resp) > 50)  $puntaje += 8;
+        if (strlen($resp) > 120) $puntaje += 4;
         foreach ($claves as $clave) {
             if (str_contains($resp, $clave)) { $puntaje += 2; break; }
         }

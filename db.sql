@@ -1,5 +1,5 @@
 -- ============================================================
---  NutriSucre — SQL Consolidado Completo (Sprint 1, 2 y 3)
+--  NutriSucre — SQL Consolidado Completo (Sprints 1, 2 y 3)
 --  Ejecutar este archivo para inicializar o restablecer la BD
 -- ============================================================
 
@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     email       VARCHAR(150) NOT NULL UNIQUE,
     password    VARCHAR(255) NOT NULL,
     rol         ENUM('Paciente','Nutricionista','Administrador') DEFAULT 'Paciente',
+    ci          VARCHAR(30) DEFAULT NULL,
+    celular     VARCHAR(30) DEFAULT NULL,
+    estado      ENUM('activo','bloqueado') DEFAULT 'activo',
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -46,11 +49,69 @@ CREATE TABLE IF NOT EXISTS nutricionistas (
     estado_verificacion ENUM('pendiente','aprobado','rechazado') DEFAULT 'pendiente',
     puntaje_tecnico INT DEFAULT 0,
     alertas_admin   TEXT DEFAULT NULL,
+    -- Campos agregados para Sprint 3
+    telefono        VARCHAR(30) DEFAULT NULL,
+    whatsapp        VARCHAR(30) DEFAULT NULL,
+    mostrar_correo  TINYINT(1) DEFAULT 1,
+    qr_code         VARCHAR(255) DEFAULT NULL,
+    titular_cuenta  VARCHAR(150) DEFAULT NULL,
+    banco           VARCHAR(150) DEFAULT NULL,
+    nro_cuenta      VARCHAR(100) DEFAULT NULL,
+    datos_transferencia_adicional TEXT DEFAULT NULL,
+    pago_qr_habilitado TINYINT(1) DEFAULT 0,
+    pago_transferencia_habilitado TINYINT(1) DEFAULT 0,
+    pago_deposito_habilitado TINYINT(1) DEFAULT 0,
+    fotos_adicionales JSON DEFAULT NULL,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 -- ─────────────────────────────────────────
---  Tabla de citas
+--  Tabla de disponibilidad del nutricionista
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS disponibilidad (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    nutricionista_id  INT NOT NULL,
+    dia_semana        TINYINT NOT NULL,
+    hora_inicio       TIME NOT NULL,
+    hora_fin          TIME NOT NULL,
+    FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────
+--  Tabla de servicios (Sprint 2)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS servicios (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    nutricionista_id    INT NOT NULL,
+    titulo              VARCHAR(200) NOT NULL,
+    descripcion         TEXT DEFAULT NULL,
+    categoria           ENUM(
+                            'Pérdida de peso',
+                            'Ganancia muscular',
+                            'Control de diabetes',
+                            'Nutrición deportiva',
+                            'Nutrición infantil',
+                            'Nutrición clínica',
+                            'Nutrición geriátrica',
+                            'Trastornos alimenticios',
+                            'Embarazo y lactancia',
+                            'Otro'
+                        ) DEFAULT 'Otro',
+    precio              DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+    duracion_semanas    INT DEFAULT 4,
+    modalidad           ENUM('Virtual','Presencial','Ambas') DEFAULT 'Virtual',
+    incluye             TEXT DEFAULT NULL,
+    estado              ENUM('Pendiente','Aprobado','Rechazado') DEFAULT 'Pendiente',
+    motivo_rechazo      TEXT DEFAULT NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (nutricionista_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    INDEX idx_estado (estado),
+    INDEX idx_nutricionista (nutricionista_id)
+);
+
+-- ─────────────────────────────────────────
+--  Tabla de citas / reservas (Sprint 3)
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS citas (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,14 +120,41 @@ CREATE TABLE IF NOT EXISTS citas (
     fecha               DATE NOT NULL,
     hora                TIME NOT NULL,
     precio              DECIMAL(8,2) DEFAULT 120.00,
-    estado              ENUM('pendiente','confirmada','cancelada') DEFAULT 'pendiente',
+    estado              ENUM('pendiente','pendiente_confirmacion','confirmada','rechazada','cancelada') DEFAULT 'pendiente_confirmacion',
+    servicio_id         INT DEFAULT NULL,
+    comprobante_pago    VARCHAR(255) DEFAULT NULL,
+    metodo_pago         ENUM('QR','Transferencia','Deposito') DEFAULT NULL,
+    motivo_rechazo      TEXT DEFAULT NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (paciente_id)      REFERENCES usuarios(id) ON DELETE CASCADE,
-    FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE
+    FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE,
+    FOREIGN KEY (servicio_id)      REFERENCES servicios(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_citas_disponibilidad
     ON citas(nutricionista_id, fecha, hora, estado);
+
+-- ─────────────────────────────────────────
+--  Tabla de solicitudes secundarias (Sprint 3)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS solicitudes (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    paciente_id         INT NOT NULL,
+    servicio_id         INT NOT NULL,
+    precio_historico    DECIMAL(8,2) NOT NULL,
+    motivo_consulta     TEXT NOT NULL,
+    peso_actual         DECIMAL(5,2) DEFAULT NULL,
+    altura_actual       DECIMAL(5,2) DEFAULT NULL,
+    condiciones_medicas TEXT DEFAULT NULL,
+    estado              ENUM('Pendiente', 'Aceptada', 'Rechazada') DEFAULT 'Pendiente',
+    respuesta_ofertante TEXT DEFAULT NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (paciente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE CASCADE,
+    INDEX idx_solicitud_estado (estado),
+    INDEX idx_solicitud_paciente (paciente_id)
+);
 
 -- ─────────────────────────────────────────
 --  Tabla de seguimiento de progreso
@@ -173,125 +261,39 @@ CREATE TABLE IF NOT EXISTS postulaciones (
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
--- ─────────────────────────────────────────
---  Tabla de disponibilidad del nutricionista
--- ─────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS disponibilidad (
-    id                INT AUTO_INCREMENT PRIMARY KEY,
-    nutricionista_id  INT NOT NULL,
-    dia_semana        TINYINT NOT NULL,
-    hora_inicio       TIME NOT NULL,
-    hora_fin          TIME NOT NULL,
-    FOREIGN KEY (nutricionista_id) REFERENCES nutricionistas(id) ON DELETE CASCADE
-);
-
--- ─────────────────────────────────────────
---  Tabla de servicios (Sprint 2)
--- ─────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS servicios (
-    id                  INT AUTO_INCREMENT PRIMARY KEY,
-    nutricionista_id    INT NOT NULL,
-    titulo              VARCHAR(200) NOT NULL,
-    descripcion         TEXT DEFAULT NULL,
-    categoria           ENUM(
-                            'Pérdida de peso',
-                            'Ganancia muscular',
-                            'Control de diabetes',
-                            'Nutrición deportiva',
-                            'Nutrición infantil',
-                            'Nutrición clínica',
-                            'Nutrición geriátrica',
-                            'Trastornos alimenticios',
-                            'Embarazo y lactancia',
-                            'Otro'
-                        ) DEFAULT 'Otro',
-    precio              DECIMAL(8,2) NOT NULL DEFAULT 0.00,
-    duracion_semanas    INT DEFAULT 4,
-    modalidad           ENUM('Virtual','Presencial','Ambas') DEFAULT 'Virtual',
-    incluye             TEXT DEFAULT NULL,
-    estado              ENUM('Pendiente','Aprobado','Rechazado') DEFAULT 'Pendiente',
-    motivo_rechazo      TEXT DEFAULT NULL,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (nutricionista_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    INDEX idx_estado (estado),
-    INDEX idx_nutricionista (nutricionista_id)
-);
-
--- ─────────────────────────────────────────
---  Tabla de solicitudes (Sprint 3)
--- ─────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS solicitudes (
-    id                  INT AUTO_INCREMENT PRIMARY KEY,
-    paciente_id         INT NOT NULL,
-    servicio_id         INT NOT NULL,
-    precio_historico    DECIMAL(8,2) NOT NULL,
-    motivo_consulta     TEXT NOT NULL,
-    peso_actual         DECIMAL(5,2) DEFAULT NULL,
-    altura_actual       DECIMAL(5,2) DEFAULT NULL,
-    condiciones_medicas TEXT DEFAULT NULL,
-    estado              ENUM('Pendiente', 'Aceptada', 'Rechazada') DEFAULT 'Pendiente',
-    respuesta_ofertante TEXT DEFAULT NULL,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (paciente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE CASCADE,
-    INDEX idx_solicitud_estado (estado),
-    INDEX idx_solicitud_paciente (paciente_id)
-);
-
 -- ============================================================
 --  DATOS DE PRUEBA / SEMILLA
 --  Contraseña por defecto para todos: "123456"
 -- ============================================================
 
-INSERT INTO usuarios (nombre, email, password, rol) VALUES
-('Luis Gabriel',   'luis@nutrisucre.bo',   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrador'),
-('Carla Soto',     'carla@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Paciente'),
-('Diego Pérez',    'diego@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista'),
-('Elena Vargas',   'elena@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista'),
-('Marcos Soliz',   'marcos@nutrisucre.bo', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista');
+INSERT INTO usuarios (nombre, email, password, rol, ci, celular, estado) VALUES
+('Luis Gabriel',   'luis@nutrisucre.bo',   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrador', '1234567', '70000001', 'activo'),
+('Carla Soto',     'carla@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Paciente', '2345678', '70000002', 'activo'),
+('Diego Pérez',    'diego@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista', '3456789', '70000003', 'activo'),
+('Elena Vargas',   'elena@nutrisucre.bo',  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista', '4567890', '70000004', 'activo'),
+('Marcos Soliz',   'marcos@nutrisucre.bo', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nutricionista', '5678901', '70000005', 'activo');
 
 INSERT INTO nutricionistas (usuario_id, especialidad, precio, rating,
     biografia, universidad, titulo, anio_egreso, anio_titulacion,
     registro_prof, experiencia_años, pacientes_exit, modalidad, idiomas,
-    duracion_consulta, max_pacientes_dia, estado_verificacion, puntaje_tecnico) VALUES
+    duracion_consulta, max_pacientes_dia, estado_verificacion, puntaje_tecnico,
+    telefono, whatsapp, mostrar_correo, titular_cuenta, banco, nro_cuenta, datos_transferencia_adicional,
+    pago_qr_habilitado, pago_transferencia_habilitado, pago_deposito_habilitado) VALUES
 (3, 'Nutrición Clínica',   150.00, 4.8,
  'Especialista en nutrición clínica con enfoque en enfermedades crónicas.',
  'Universidad Mayor de San Francisco Xavier', 'Licenciado en Nutrición', 2015, 2016,
- 'NUT-2016-0189', 8, 420, 'Ambas', 'Español', 60, 8, 'aprobado', 88),
+ 'NUT-2016-0189', 8, 420, 'Ambas', 'Español', 60, 8, 'aprobado', 88,
+ '70000003', '70000003', 1, 'Diego Pérez S.', 'Banco Nacional de Bolivia', '100-2938402', 'Caja de ahorro en Bs. Enviar comprobante.', 1, 1, 1),
 (4, 'Nutrición Deportiva', 120.00, 4.9,
  'Especialista en nutrición deportiva para atletas de alto rendimiento.',
  'Universidad Mayor de San Francisco Xavier', 'Licenciada en Nutrición y Dietética', 2016, 2017,
- 'NUT-2017-0342', 7, 350, 'Ambas', 'Español, Inglés', 60, 6, 'aprobado', 91),
+ 'NUT-2017-0342', 7, 350, 'Ambas', 'Español, Inglés', 60, 6, 'aprobado', 91,
+ '70000004', '70000004', 1, 'Elena Vargas P.', 'Banco Mercantil Santa Cruz', '401-923849', 'Transferencia bancaria directa.', 0, 1, 0),
 (5, 'Diabetes y Obesidad', 200.00, 5.0,
  'Especialista en manejo nutricional de diabetes tipo 2 y obesidad.',
  'Universidad Autónoma Gabriel René Moreno', 'Licenciado en Nutrición Clínica', 2014, 2015,
- 'NUT-2015-0199', 9, 520, 'Virtual', 'Español', 45, 8, 'aprobado', 94);
-
-INSERT INTO citas (paciente_id, nutricionista_id, fecha, hora, precio, estado) VALUES
-(2, 1, '2026-06-20', '10:00:00', 150.00, 'confirmada'),
-(2, 2, '2026-06-24', '14:00:00', 120.00, 'pendiente');
-
-INSERT INTO seguimiento (paciente_id, fecha, peso, cintura, cadera, grasa, nota) VALUES
-(2, '2026-01-10', 78.5, 92.0, 104.0, 28.5, 'Inicio del plan'),
-(2, '2026-01-24', 77.2, 90.5, 103.0, 27.8, 'Buena adherencia'),
-(2, '2026-02-07', 76.0, 89.0, 102.0, 27.1, 'Se nota la diferencia'),
-(2, '2026-02-21', 74.8, 87.5, 101.0, 26.5, 'Motivada'),
-(2, '2026-03-07', 73.5, 86.0, 100.0, 25.9, 'Excelente progreso'),
-(2, '2026-03-21', 72.1, 84.5, 99.0,  25.2, 'Meta casi alcanzada');
-
-INSERT INTO planes (paciente_id, nutricionista_id, titulo, descripcion, calorias, proteinas, carbohidratos, grasas, duracion_semanas, estado, fecha_inicio) VALUES
-(2, 1, 'Plan de descenso de peso - Fase 1',
- 'Plan hipocalórico moderado con énfasis en proteínas magras y vegetales.',
- 1600, 120, 150, 45, 8, 'activo', '2026-01-10'),
-(2, 2, 'Plan de hidratación intensiva',
- 'Mínimo 2.5 litros de agua diarios. Reducir bebidas gaseosas.',
- 0, 0, 0, 0, 4, 'finalizado', '2026-01-10');
-
-INSERT INTO resenas (paciente_id, nutricionista_id, cita_id, calificacion, comentario) VALUES
-(2, 1, 1, 5, 'Excelente profesional, muy puntual y clara en sus explicaciones.'),
-(2, 2, 2, 4, 'Muy buena consulta, me dio consejos prácticos.');
+ 'NUT-2015-0199', 9, 520, 'Virtual', 'Español', 45, 8, 'aprobado', 94,
+ '70000005', '70000005', 0, 'Marcos Soliz O.', 'Banco Unión', '150-29384910', 'Depósito en cuenta fiscal.', 0, 1, 1);
 
 INSERT INTO disponibilidad (nutricionista_id, dia_semana, hora_inicio, hora_fin) VALUES
 (1, 0, '09:00', '17:00'), (1, 1, '09:00', '17:00'), (1, 2, '09:00', '17:00'),
@@ -333,7 +335,12 @@ UPDATE servicios SET motivo_rechazo =
     'El servicio no cumple con los estándares mínimos: duración insuficiente (1 semana), precio no justificado y descripción genérica. Amplíe el programa a mínimo 4 semanas con seguimiento profesional.'
 WHERE titulo = 'Dieta Keto Express 7 días';
 
--- Solicitudes de prueba (Sprint 3)
+-- Citas de prueba (Sprint 3)
+INSERT INTO citas (paciente_id, nutricionista_id, fecha, hora, precio, estado, servicio_id, metodo_pago, comprobante_pago) VALUES
+(2, 1, '2026-06-20', '10:00:00', 150.00, 'confirmada', 1, 'Transferencia', NULL),
+(2, 2, '2026-06-24', '14:00:00', 120.00, 'pendiente_confirmacion', 2, 'QR', 'uploads/comprobantes/demo_comprobante.jpg');
+
+-- Solicitudes secundarias (Sprint 3)
 INSERT INTO solicitudes (paciente_id, servicio_id, precio_historico, motivo_consulta, peso_actual, altura_actual, condiciones_medicas, estado, respuesta_ofertante) VALUES
 (2, 1, 350.00, 'Quiero reducir grasa abdominal y mejorar mis hábitos de alimentación diarios.', 72.50, 165.00, 'Ninguna', 'Pendiente', NULL),
 (2, 2, 480.00, 'Necesito preparar mi dieta para una maratón de 10K el próximo mes.', 70.00, 165.00, 'Alergia al maní', 'Aceptada', '¡Excelente! Vamos a trabajar en tu rendimiento y a planificar tu hidratación.'),

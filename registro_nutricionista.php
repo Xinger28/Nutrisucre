@@ -1,12 +1,28 @@
 <?php
 // ============================================================
-//  registro_nutricionista.php  —  Formulario de postulación
+//  registro_nutricionista.php  —  Formulario de postulación y pagos
 //  Solo accesible para usuarios con rol Nutricionista
 // ============================================================
 session_start();
 if (empty($_SESSION['usuario']))                       { header('Location: login.php'); exit; }
 if ($_SESSION['usuario']['rol'] !== 'Nutricionista')   { header('Location: dashboard.php'); exit; }
 $usuario = $_SESSION['usuario'];
+
+require_once 'config.php';
+$db = getDB();
+
+// Obtener datos del nutricionista
+$stmt = $db->prepare("SELECT * FROM nutricionistas WHERE usuario_id = ?");
+$stmt->execute([$usuario['id']]);
+$nutri = $stmt->fetch();
+$estadoVerificacion = $nutri ? $nutri['estado_verificacion'] : 'no_iniciado';
+
+// Obtener última postulación
+$stmtPost = $db->prepare("SELECT * FROM postulaciones WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1");
+$stmtPost->execute([$usuario['id']]);
+$lastPost = $stmtPost->fetch();
+$lastPostEstado = $lastPost ? $lastPost['estado'] : 'no_iniciado';
+$notasAdmin = $lastPost ? $lastPost['notas_admin'] : '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -21,30 +37,206 @@ $usuario = $_SESSION['usuario'];
   .star-r { font-size:26px; cursor:pointer; color:#d1d5db; transition:color .15s; }
   .star-r.on { color:#f59e0b; }
 </style>
+</head>
 <body>
 
-<!-- Header simple -->
-<header class="ios-header md:pl-64">
-  <div class="flex items-center gap-3">
-    <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon"><span class="icon" style="font-size:20px">menu</span></button>
-    <p class="font-black text-[18px]">Mi Verificación Profesional</p>
-  </div>
-  <div class="text-right hidden sm:block">
-    <p class="font-semibold text-[14px]"><?= htmlspecialchars($nombre) ?></p>
-    <p class="text-[12px] text-[#22c55e] font-semibold">Nutricionista</p>
-  </div>
-</header>
+<!-- Sidebar & Layout Structure -->
+<div class="flex">
+  <?php $paginaActual = 'registro_nutricionista'; require_once '_sidebar.php'; ?>
+  
+  <div class="flex-1 min-h-screen md:pl-64">
+    <!-- Header simple -->
+    <header class="ios-header">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon"><span class="icon" style="font-size:20px">menu</span></button>
+        <p class="font-black text-[18px]">Mi Verificación Profesional</p>
+      </div>
+      <div class="text-right hidden sm:block">
+        <p class="font-semibold text-[14px]"><?= htmlspecialchars($usuario['nombre']) ?></p>
+        <p class="text-[12px] text-[#22c55e] font-semibold">Nutricionista</p>
+      </div>
+    </header>
 
-<main class="max-w-3xl mx-auto p-6">
+    <main class="max-w-3xl mx-auto p-6">
+      
+      <!-- Si ya está aprobado, mostrar Panel de Configuración de Perfil y Pagos -->
+      <?php if ($estadoVerificacion === 'aprobado'): ?>
+        
+        <div class="fade-up space-y-6">
+          <div class="bg-white rounded-3xl shadow-sm border p-8">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-[#22c55e]">
+                <span class="icon text-3xl">verified</span>
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold">Perfil Profesional y Métodos de Pago</h2>
+                <p class="text-gray-500 text-sm">Configura tus datos de contacto, cobros e información pública</p>
+              </div>
+            </div>
+            
+            <div class="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex gap-3 text-sm text-green-800">
+              <span class="icon text-xl text-[#22c55e]">info</span>
+              <p>Tu postulación está aprobada. Aquí puedes configurar los métodos de pago (QR, transferencia, datos de cuenta) que verán tus pacientes al reservar sus citas.</p>
+            </div>
+            
+            <!-- Datos de Perfil Público -->
+            <h3 class="font-bold text-lg border-b pb-2 mb-4">Información de Perfil</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+              <div>
+                <label class="text-[13px] font-semibold text-[#48484a] pl-1">Foto de Perfil</label>
+                <div class="flex items-center gap-4 mt-1">
+                  <img id="img_preview_foto" src="<?= $nutri['foto'] ?: 'uploads/fotos/default.jpg' ?>" class="w-16 h-16 rounded-2xl object-cover border">
+                  <div>
+                    <input type="file" id="file_foto" accept="image/*" class="hidden" onchange="uploadFile('foto')">
+                    <button type="button" onclick="document.getElementById('file_foto').click()" class="ios-btn-ghost py-2 px-4 text-xs">Cambiar foto</button>
+                    <input type="hidden" id="p_foto_url" value="<?= htmlspecialchars($nutri['foto'] ?? '') ?>">
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label class="text-[13px] font-semibold text-[#48484a] pl-1">Precio por Consulta (Bs.) <span class="text-red-500">*</span></label>
+                <input class="ios-input mt-1" id="p_precio" type="number" min="0" value="<?= htmlspecialchars($nutri['precio'] ?? '120.00') ?>">
+              </div>
+              
+              <div class="md:col-span-2">
+                <label class="text-[13px] font-semibold text-[#48484a] pl-1">Descripción del Servicio</label>
+                <textarea class="ios-input mt-1" id="p_descripcion" rows="3" placeholder="Describe tu enfoque, especialidades..."><?= htmlspecialchars($nutri['descripcion_serv'] ?? '') ?></textarea>
+              </div>
+            </div>
+            
+            <!-- Datos de Contacto Público -->
+            <h3 class="font-bold text-lg border-b pb-2 mb-4">Información de Contacto</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+              <div>
+                <label class="text-[13px] font-semibold text-[#48484a] pl-1">Teléfono Fijo / Celular</label>
+                <input class="ios-input mt-1" id="p_telefono_ver" type="tel" value="<?= htmlspecialchars($nutri['telefono'] ?? '') ?>" placeholder="+591 7XXXXXXX">
+              </div>
+              <div>
+                <label class="text-[13px] font-semibold text-[#48484a] pl-1">Enlace de WhatsApp</label>
+                <input class="ios-input mt-1" id="p_whatsapp" type="text" value="<?= htmlspecialchars($nutri['whatsapp'] ?? '') ?>" placeholder="Ej: 71234567">
+              </div>
+              <div class="md:col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer mt-2">
+                  <input type="checkbox" id="p_mostrar_correo" class="w-4 h-4 accent-[#22c55e]" <?= ($nutri['mostrar_correo'] ?? 1) ? 'checked' : '' ?>>
+                  <span class="text-sm text-gray-700">Mostrar mi correo electrónico públicamente en mi perfil</span>
+                </label>
+              </div>
+            </div>
+            
+            <!-- Métodos de Pago -->
+            <h3 class="font-bold text-lg border-b pb-2 mb-4">Métodos de Pago Habilitados</h3>
+            
+            <div class="space-y-6">
+              <!-- Método: QR -->
+              <div class="p-4 border rounded-2xl bg-gray-50">
+                <label class="flex items-center gap-2 cursor-pointer mb-3">
+                  <input type="checkbox" id="pago_qr_chk" class="w-4 h-4 accent-[#22c55e]" <?= ($nutri['pago_qr_habilitado'] ?? 0) ? 'checked' : '' ?> onchange="toggleMetodoPago('qr')">
+                  <span class="font-bold text-sm text-[#1c1c1e]">1. Habilitar Pago por Código QR</span>
+                </label>
+                
+                <div id="pago_qr_fields" class="mt-3 pl-6 space-y-3 <?= ($nutri['pago_qr_habilitado'] ?? 0) ? '' : 'hidden' ?>">
+                  <label class="text-[12px] text-gray-500 font-semibold block">Sube tu Imagen de QR de Pago</label>
+                  <div class="flex items-start gap-4">
+                    <img id="img_preview_qr" src="<?= $nutri['qr_code'] ?: 'uploads/qrs/default.jpg' ?>" class="w-32 h-32 rounded-xl object-contain border bg-white">
+                    <div>
+                      <input type="file" id="file_qr" accept="image/*" class="hidden" onchange="uploadFile('qr')">
+                      <button type="button" onclick="document.getElementById('file_qr').click()" class="ios-btn-ghost py-2 px-4 text-xs">Subir QR</button>
+                      <input type="hidden" id="p_qr_url" value="<?= htmlspecialchars($nutri['qr_code'] ?? '') ?>">
+                      <p class="text-xs text-gray-400 mt-2">Formatos aceptados: PNG, JPG, JPEG.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Método: Transferencia -->
+              <div class="p-4 border rounded-2xl bg-gray-50">
+                <label class="flex items-center gap-2 cursor-pointer mb-3">
+                  <input type="checkbox" id="pago_transferencia_chk" class="w-4 h-4 accent-[#22c55e]" <?= ($nutri['pago_transferencia_habilitado'] ?? 0) ? 'checked' : '' ?> onchange="toggleMetodoPago('trans')">
+                  <span class="font-bold text-sm text-[#1c1c1e]">2. Habilitar Transferencia Bancaria</span>
+                </label>
+                
+                <div id="pago_trans_fields" class="mt-3 pl-6 grid grid-cols-1 md:grid-cols-2 gap-4 <?= ($nutri['pago_transferencia_habilitado'] ?? 0) ? '' : 'hidden' ?>">
+                  <div>
+                    <label class="text-[12px] text-gray-500 font-semibold block">Banco</label>
+                    <input class="ios-input mt-1 py-2" id="p_banco" type="text" value="<?= htmlspecialchars($nutri['banco'] ?? '') ?>" placeholder="Ej: Banco Mercantil Santa Cruz">
+                  </div>
+                  <div>
+                    <label class="text-[12px] text-gray-500 font-semibold block">Número de Cuenta</label>
+                    <input class="ios-input mt-1 py-2" id="p_nro_cuenta" type="text" value="<?= htmlspecialchars($nutri['nro_cuenta'] ?? '') ?>" placeholder="Ej: 4012456789">
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="text-[12px] text-gray-500 font-semibold block">Titular de la Cuenta</label>
+                    <input class="ios-input mt-1 py-2" id="p_titular" type="text" value="<?= htmlspecialchars($nutri['titular_cuenta'] ?? '') ?>" placeholder="Nombre del titular de la cuenta">
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="text-[12px] text-gray-500 font-semibold block">Detalles adicionales para Transferencia</label>
+                    <textarea class="ios-input mt-1 py-2 text-xs" id="p_datos_adicionales" rows="2" placeholder="Ej: C.I. del titular, tipo de cuenta (ahorros/corriente), correo de aviso..."><?= htmlspecialchars($nutri['datos_transferencia_adicional'] ?? '') ?></textarea>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Método: Depósito -->
+              <div class="p-4 border rounded-2xl bg-gray-50">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="pago_deposito_chk" class="w-4 h-4 accent-[#22c55e]" <?= ($nutri['pago_deposito_habilitado'] ?? 0) ? 'checked' : '' ?>>
+                  <span class="font-bold text-sm text-[#1c1c1e]">3. Habilitar Depósito Bancario directo</span>
+                </label>
+                <p class="text-xs text-gray-400 pl-6 mt-1">Permite a los pacientes pagar mediante depósitos directos en taquilla bancaria utilizando tu información de transferencia.</p>
+              </div>
+            </div>
+            
+            <button onclick="guardarConfiguracion()" id="btnGuardarConfig" class="ios-btn w-full mt-8" style="border-radius:16px; padding:15px">
+              Guardar configuración
+            </button>
+            <div id="msgConfig" class="hidden mt-4 px-4 py-3 rounded-2xl text-sm font-semibold text-center"></div>
+          </div>
+        </div>
 
-  <!-- Banner informativo -->
-  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 flex gap-4">
-    <span class="icon text-amber-500 text-3xl flex-shrink-0 mt-0.5">verified_user</span>
-    <div>
-      <p class="font-bold text-amber-800">Verificación profesional requerida</p>
-      <p class="text-amber-700 text-sm mt-1">Para ofrecer servicios en NutriSucre debes completar este formulario. Tu perfil quedará en estado <strong>PENDIENTE</strong> hasta que un administrador revise y apruebe tu documentación.</p>
-    </div>
-  </div>
+      <?php elseif ($lastPostEstado === 'pendiente'): ?>
+        
+        <div class="fade-up bg-white rounded-3xl shadow-sm border p-12 text-center max-w-lg mx-auto mt-12">
+          <span class="icon text-7xl text-amber-500 animate-pulse">pending_actions</span>
+          <h2 class="text-2xl font-bold mt-4 text-[#1c1c1e]">Postulación en Revisión</h2>
+          <p class="text-gray-500 mt-3 text-[15px] leading-relaxed">
+            Tu documentación está siendo evaluada por el equipo de administración de <strong>NutriSucre</strong>. 
+            Este proceso toma habitualmente entre 24 y 48 horas laborables.
+          </p>
+          <div class="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800 text-xs inline-block text-left">
+            <strong>Detalle del estado:</strong><br>
+            • Puntaje técnico obtenido: <strong><?= htmlspecialchars($lastPost['puntaje_tecnico'] ?? '0') ?>/100</strong><br>
+            • Alertas detectadas: <?= nl2br(htmlspecialchars($lastPost['alertas'] ?? 'Ninguna')) ?>
+          </div>
+          <div class="mt-8">
+            <a href="dashboard.php" class="ios-btn px-8">Regresar al Inicio</a>
+          </div>
+        </div>
+
+      <?php else: ?>
+        
+        <!-- Formulario de postulación original -->
+        <!-- Si fue rechazado previamente, mostrar feedback al inicio -->
+        <?php if ($lastPostEstado === 'rechazado'): ?>
+          <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-8 flex gap-4 fade-up">
+            <span class="icon text-red-500 text-3xl flex-shrink-0 mt-0.5">warning</span>
+            <div>
+              <p class="font-bold text-red-800">Postulación rechazada / observada</p>
+              <p class="text-red-700 text-sm mt-1">Tu postulación anterior fue observada por el administrador. Revisa las siguientes notas, corrige los campos necesarios y vuelve a enviarla:</p>
+              <div class="mt-3 p-3 bg-white/70 border rounded-xl font-mono text-xs text-red-900">
+                <?= nl2br(htmlspecialchars($notasAdmin)) ?>
+              </div>
+            </div>
+          </div>
+        <?php endif; ?>
+
+        <!-- Banner informativo -->
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 flex gap-4">
+          <span class="icon text-amber-500 text-3xl flex-shrink-0 mt-0.5">verified_user</span>
+          <div>
+            <p class="font-bold text-amber-800">Verificación profesional requerida</p>
+            <p class="text-amber-700 text-sm mt-1">Para ofrecer servicios en NutriSucre debes completar este formulario. Tu perfil quedará en estado <strong>PENDIENTE</strong> hasta que un administrador revise y apruebe tu documentación.</p>
+          </div>
+        </div>
 
   <!-- Stepper de pasos -->
   <div class="flex items-center justify-between mb-10 relative">
@@ -317,7 +509,10 @@ $usuario = $_SESSION['usuario'];
 
   <!-- Feedback final -->
   <div id="msgFinal" class="hidden mt-6 px-6 py-5 rounded-2xl text-sm font-medium text-center"></div>
-</main>
+      <?php endif; ?>
+    </main>
+  </div>
+</div>
 
 <script>
 // ─────────────────────────────────────────
@@ -572,8 +767,102 @@ async function enviarPostulacion() {
     }
 }
 
+// ─────────────────────────────────────────
+//  Configuración de Perfil y Pagos (Aprobado)
+// ─────────────────────────────────────────
+function toggleMetodoPago(metodo) {
+    if (metodo === 'qr') {
+        const chk = document.getElementById('pago_qr_chk');
+        document.getElementById('pago_qr_fields').classList.toggle('hidden', !chk.checked);
+    } else if (metodo === 'trans') {
+        const chk = document.getElementById('pago_transferencia_chk');
+        document.getElementById('pago_trans_fields').classList.toggle('hidden', !chk.checked);
+    }
+}
+
+async function uploadFile(tipo) {
+    const fileInput = document.getElementById(tipo === 'foto' ? 'file_foto' : 'file_qr');
+    if (!fileInput || !fileInput.files.length) return;
+    
+    const formData = new FormData();
+    formData.append('archivo', fileInput.files[0]);
+    formData.append('tipo', tipo === 'foto' ? 'fotos' : 'qrs');
+    
+    try {
+        const res = await fetch('api/upload.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.ok) {
+            if (tipo === 'foto') {
+                document.getElementById('img_preview_foto').src = data.url;
+                document.getElementById('p_foto_url').value = data.url;
+            } else {
+                document.getElementById('img_preview_qr').src = data.url;
+                document.getElementById('p_qr_url').value = data.url;
+            }
+            alert('Archivo subido con éxito.');
+        } else {
+            alert('Error al subir: ' + (data.error || 'Desconocido'));
+        }
+    } catch (e) {
+        alert('Error en la carga de archivo.');
+    }
+}
+
+async function guardarConfiguracion() {
+    const btn = document.getElementById('btnGuardarConfig');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    
+    const payload = {
+        telefono: document.getElementById('p_telefono_ver')?.value || '',
+        whatsapp: document.getElementById('p_whatsapp')?.value || '',
+        mostrar_correo: document.getElementById('p_mostrar_correo')?.checked ? 1 : 0,
+        qr_code: document.getElementById('p_qr_url')?.value || '',
+        titular_cuenta: document.getElementById('p_titular')?.value || '',
+        banco: document.getElementById('p_banco')?.value || '',
+        nro_cuenta: document.getElementById('p_nro_cuenta')?.value || '',
+        datos_transferencia_adicional: document.getElementById('p_datos_adicionales')?.value || '',
+        pago_qr_habilitado: document.getElementById('pago_qr_chk')?.checked ? 1 : 0,
+        pago_transferencia_habilitado: document.getElementById('pago_transferencia_chk')?.checked ? 1 : 0,
+        pago_deposito_habilitado: document.getElementById('pago_deposito_chk')?.checked ? 1 : 0,
+        foto: document.getElementById('p_foto_url')?.value || '',
+        precio: document.getElementById('p_precio')?.value || '120.00',
+        descripcion_serv: document.getElementById('p_descripcion')?.value || ''
+    };
+    
+    const msg = document.getElementById('msgConfig');
+    msg.classList.add('hidden');
+    
+    try {
+        const res = await fetch('api/nutricionistas.php?accion=actualizar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            msg.textContent = '✅ ' + data.mensaje;
+            msg.className = 'mt-4 px-4 py-3 rounded-2xl text-sm font-semibold text-center bg-green-100 text-green-800';
+        } else {
+            msg.textContent = '⚠ ' + (data.error || 'Error al guardar');
+            msg.className = 'mt-4 px-4 py-3 rounded-2xl text-sm font-semibold text-center bg-red-100 text-red-700';
+        }
+    } catch(e) {
+        msg.textContent = '⚠ Error de conexión al guardar.';
+        msg.className = 'mt-4 px-4 py-3 rounded-2xl text-sm font-semibold text-center bg-red-100 text-red-700';
+    }
+    
+    msg.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Guardar configuración';
+    setTimeout(() => msg.classList.add('hidden'), 4000);
+}
+
 // Init
-actualizarUI();
+if (document.getElementById('sec0')) {
+    actualizarUI();
+}
 </script>
 </body>
 </html>

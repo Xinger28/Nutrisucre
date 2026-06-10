@@ -55,3 +55,15 @@ function requireAdmin(): array {
     }
     return $usuario;
 }
+
+function enviarCorreoMock(string $para, string $asunto, string $cuerpo): void {
+    $fecha = date('Y-m-d H:i:s');
+    $logEntry = "============================================================\n";
+    $logEntry .= "FECHA: $fecha\n";
+    $logEntry .= "PARA: $para\n";
+    $logEntry .= "ASUNTO: $asunto\n";
+    $logEntry .= "CUERPO:\n$cuerpo\n";
+    $logEntry .= "============================================================\n\n";
+    
+    file_put_contents(__DIR__ . '/emails_enviados.log', $logEntry, FILE_APPEND);
+}
