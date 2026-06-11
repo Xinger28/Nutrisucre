@@ -472,7 +472,6 @@ function mostrarFeedback(txt,tipo='ok') {
     showToast(txt);
     setTimeout(()=>el.classList.add('hidden'),5000);
 }
-}
 </script>
 </body>
 </html>
