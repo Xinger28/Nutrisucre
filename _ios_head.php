@@ -117,6 +117,7 @@
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     border-right: 1px solid var(--border);
+    z-index: 60;
   }
   .nav-item {
     display: flex; align-items: center; gap: 12px;

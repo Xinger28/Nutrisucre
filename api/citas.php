@@ -71,25 +71,7 @@ function listarCitas(): void {
         ");
         $stmt->execute([$usuario['id']]);
     } else {
-        // Admin ve todas
-        $stmt = $db->query("
-            SELECT
-                c.id, c.fecha,
-                TIME_FORMAT(c.hora, '%H:%i') AS hora,
-                c.precio, c.estado, c.comprobante_pago, c.metodo_pago, c.motivo_rechazo,
-                pac.nombre AS paciente,
-                pac.email AS paciente_email,
-                pac.celular AS paciente_celular,
-                nut.nombre AS nutricionista,
-                n.especialidad,
-                srv.titulo AS servicio_titulo
-            FROM citas c
-            JOIN usuarios pac     ON pac.id = c.paciente_id
-            JOIN nutricionistas n ON n.id   = c.nutricionista_id
-            JOIN usuarios nut     ON nut.id = n.usuario_id
-            LEFT JOIN servicios srv ON srv.id = c.servicio_id
-            ORDER BY c.fecha DESC, c.hora DESC
-        ");
+        responderJSON(['error' => 'Acceso denegado. Los administradores no gestionan citas.'], 403);
     }
 
     responderJSON($stmt->fetchAll());
@@ -189,8 +171,8 @@ function responderCita(array $body): void {
         responderJSON(['error' => 'Cita no encontrada'], 404);
     }
 
-    // El nutricionista del servicio o el administrador pueden responder
-    if ($usuario['rol'] !== 'Administrador' && $cita['nutri_usuario_id'] != $usuario['id']) {
+    // El nutricionista del servicio puede responder
+    if ($cita['nutri_usuario_id'] != $usuario['id']) {
         // Un paciente solo puede CANCELAR su propia cita
         if ($estado === 'cancelada' && $cita['paciente_id'] == $usuario['id']) {
             // Permitir cancelación

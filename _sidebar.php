@@ -11,7 +11,6 @@ $navLinks = [
     ['index.php',                  'search',            'Buscar Especialista',   ['Paciente','Administrador']],
     ['citas.php',                  'calendar_month',    'Mis Citas',             ['Paciente']],
     ['citas.php',                  'calendar_month',    'Citas Recibidas',       ['Nutricionista']],
-    ['citas.php',                  'calendar_month',    'Gestión de Citas',      ['Administrador']],
     ['progreso.php',               'monitoring',        'Mi Progreso',           ['Paciente']],
     ['planes.php',                 'restaurant_menu',   'Mis Planes',            ['Paciente']],
     ['servicios.php',              'medical_services',  'Mis Servicios',         ['Nutricionista']],
@@ -25,15 +24,15 @@ $navLinks = [
 <!-- Toast global -->
 <div id="toast"></div>
 
-<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 flex flex-col p-4 gap-1 z-40 hidden md:flex">
-  <div class="px-2 py-5 mb-2">
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 flex flex-col p-4 gap-1 z-[60] hidden md:flex">
+  <div class="px-2 py-5 mb-2 cursor-pointer select-none" onclick="window.location.href='index.php'">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-2xl flex items-center justify-center shadow-lg">
-        <span class="icon icon-fill text-white text-xl" style="font-size:20px">nutrition</span>
+      <div class="w-9 h-9 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-xl flex items-center justify-center shadow-lg">
+        <span class="icon icon-fill text-white text-lg" style="font-size:18px">nutrition</span>
       </div>
       <div>
-        <p class="font-black text-[17px] tracking-tight text-[#1c1c1e]">NutriSucre</p>
-        <p class="text-[11px] text-[#8e8e93]">Chuquisaca · Bolivia</p>
+        <p class="font-black text-[18px] tracking-tight text-[#1c1c1e] leading-tight">NutriSucre</p>
+        <p class="text-[11px] text-[#8e8e93] mt-0.5">Chuquisaca · Bolivia</p>
       </div>
     </div>
   </div>

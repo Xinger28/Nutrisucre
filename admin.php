@@ -38,13 +38,12 @@ $nombre  = $usuario['nombre'];
   <div id="statsAdmin" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
 
   <!-- Tabs -->
-  <div class="seg-control max-w-lg">
+  <div class="seg-control max-w-sm">
     <button class="seg-btn active" id="tabPostulaciones" onclick="cambiarTab('Postulaciones')">Postulaciones</button>
     <button class="seg-btn" id="tabUsuarios"      onclick="cambiarTab('Usuarios')">Usuarios</button>
     <button class="seg-btn" id="tabServicios"     onclick="cambiarTab('Servicios')">
       Servicios <span id="badgePend" class="hidden bg-red-500 text-white text-[10px] rounded-full px-1.5 ml-0.5 font-bold"></span>
     </button>
-    <button class="seg-btn" id="tabCitas"         onclick="cambiarTab('Citas')">Citas Globales</button>
   </div>
 
   <div id="feedbackGlobal" class="hidden rounded-2xl px-5 py-4 text-[14px] font-semibold text-center"></div>
@@ -96,36 +95,7 @@ $nombre  = $usuario['nombre'];
     </div>
     <div id="listaSrvsAdmin" class="space-y-3"></div>
   </div>
-
-  <!-- ══ CITAS GLOBALES ══ -->
-  <div id="panelCitas" class="tab-panel space-y-4">
-    <div class="flex gap-2 flex-wrap items-center justify-between">
-      <div class="flex gap-2 flex-wrap" id="filtrosCitas">
-        <button onclick="cargarCitasAdmin('')" class="chip active" id="chipCita_all">Todas</button>
-        <button onclick="cargarCitasAdmin('pendiente_confirmacion')" class="chip" id="chipCita_pend">⏳ Pendientes</button>
-        <button onclick="cargarCitasAdmin('confirmada')" class="chip" id="chipCita_conf">✅ Confirmadas</button>
-        <button onclick="cargarCitasAdmin('rechazada')" class="chip" id="chipCita_rech">❌ Rechazadas</button>
-        <button onclick="cargarCitasAdmin('cancelada')" class="chip" id="chipCita_canc">🚫 Canceladas</button>
-      </div>
-    </div>
-    <div id="listaCitasAdmin" class="space-y-3"></div>
-  </div>
 </main>
-
-<!-- ══ MODAL: Ver Comprobante ══ -->
-<div id="modalComprobante" class="ios-modal-bg" onclick="if(event.target===this)cerrarModalComprobante()">
-  <div class="ios-modal max-w-lg p-5">
-    <div class="flex justify-between items-center mb-4">
-      <p class="font-bold text-[18px]">Comprobante de Pago</p>
-      <button onclick="cerrarModalComprobante()" class="ios-btn-icon"><span class="icon">close</span></button>
-    </div>
-    <div class="text-center">
-      <img id="imgComprobante" src="" class="max-h-[60vh] mx-auto rounded-xl object-contain border">
-      <iframe id="pdfComprobante" src="" class="w-full h-[60vh] rounded-xl border hidden"></iframe>
-      <p id="txtNoComprobante" class="text-gray-500 py-8 hidden">No hay comprobante cargado para esta cita.</p>
-    </div>
-  </div>
-</div>
 
 <!-- ══ MODAL: Detalle Postulación ══ -->
 <div id="modalPost" class="ios-modal-bg" onclick="if(event.target===this)cerrarModalPost()">
@@ -209,10 +179,10 @@ $nombre  = $usuario['nombre'];
 let todosUsers=[], todasPosts=[], idElimUser=null;
 const ROL_BADGE={'Administrador':'badge badge-purple','Nutricionista':'badge badge-blue','Paciente':'badge badge-green'};
 
-document.addEventListener('DOMContentLoaded',()=>{ cargarStats(); cargarPosts(''); cargarUsuarios(); cargarSrvsAdmin(''); cargarCitasAdmin(''); });
+document.addEventListener('DOMContentLoaded',()=>{ cargarStats(); cargarPosts(''); cargarUsuarios(); cargarSrvsAdmin(''); });
 
 function cambiarTab(name) {
-    ['Postulaciones','Usuarios','Servicios','Citas'].forEach(t=>{
+    ['Postulaciones','Usuarios','Servicios'].forEach(t=>{
         document.getElementById('panel'+t).classList.remove('activo');
         document.getElementById('tab'+t).classList.remove('active');
     });
@@ -502,164 +472,6 @@ function mostrarFeedback(txt,tipo='ok') {
     showToast(txt);
     setTimeout(()=>el.classList.add('hidden'),5000);
 }
-
-// ── Citas Admin ──
-async function cargarCitasAdmin(estado) {
-    const c = document.getElementById('listaCitasAdmin');
-    if (!c) return;
-    c.innerHTML = '<p class="text-center text-[#8e8e93] text-[14px] py-8">Cargando citas...</p>';
-    
-    // Activar chip
-    const chips = ['all', 'pend', 'conf', 'rech', 'canc'];
-    chips.forEach(ch => {
-        const btn = document.getElementById('chipCita_' + ch);
-        if (btn) btn.classList.remove('active');
-    });
-    const activeChip = estado === '' ? 'all' : estado === 'pendiente_confirmacion' ? 'pend' : estado === 'confirmada' ? 'conf' : estado === 'rechazada' ? 'rech' : 'canc';
-    const btnActive = document.getElementById('chipCita_' + activeChip);
-    if (btnActive) btnActive.classList.add('active');
-
-    try {
-        const res = await fetch('api/citas.php');
-        const data = await res.json();
-        if (data.error) {
-            c.innerHTML = `<div class="ios-card p-10 text-center text-red-500 text-[14px]">Error: ${data.error}</div>`;
-            return;
-        }
-        
-        let filtradas = data;
-        if (estado) {
-            filtradas = data.filter(cit => cit.estado === estado);
-        }
-        
-        renderCitasAdmin(filtradas);
-    } catch (e) {
-        c.innerHTML = '<div class="ios-card p-10 text-center text-red-500 text-[14px]">Error de conexión al cargar citas.</div>';
-    }
-}
-
-function renderCitasAdmin(lista) {
-    const c = document.getElementById('listaCitasAdmin');
-    if (!lista.length) {
-        c.innerHTML = '<div class="ios-card p-10 text-center text-[#8e8e93] text-[14px]">No hay citas registradas en este estado.</div>';
-        return;
-    }
-    
-    const EST_BADGE = {
-        'pendiente_confirmacion': 'badge-yellow',
-        'pendiente': 'badge-yellow',
-        'confirmada': 'badge-green',
-        'rechazada': 'badge-red',
-        'cancelada': 'badge-gray'
-    };
-    const EST_TXT = {
-        'pendiente_confirmacion': 'Pendiente de Pago',
-        'pendiente': 'Pendiente',
-        'confirmada': 'Confirmada',
-        'rechazada': 'Rechazada',
-        'cancelada': 'Cancelada'
-    };
-
-    c.innerHTML = lista.map(cit => {
-        const fecha = new Date(cit.fecha + 'T00:00:00').toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
-        const horaStr = cit.hora;
-        const comprobanteBtn = cit.comprobante_pago 
-            ? `<button onclick="abrirModalComprobante('${cit.comprobante_pago}')" class="badge badge-blue cursor-pointer flex items-center gap-1">
-                 <span class="icon" style="font-size:12px">receipt</span> Ver Pago (${cit.metodo_pago})
-               </button>`
-            : '<span class="text-xs text-gray-400">Sin comprobante</span>';
-
-        return `<div class="ios-card p-5 space-y-3">
-            <div class="flex justify-between items-start flex-wrap gap-2">
-                <div>
-                    <span class="badge ${EST_BADGE[cit.estado]}">${EST_TXT[cit.estado]}</span>
-                    <h4 class="font-black text-[16px] mt-1">${cit.servicio_titulo || 'Consulta de Nutrición'}</h4>
-                    <p class="text-xs text-gray-500">Fecha: ${fecha} · Hora: ${horaStr} · Precio: Bs. ${parseFloat(cit.precio).toFixed(2)}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[13px] font-bold text-[#1c1c1e]">Paciente: ${cit.paciente}</p>
-                    <p class="text-[11px] text-[#8e8e93]">Cel: ${cit.paciente_celular || '—'} · ${cit.paciente_email}</p>
-                </div>
-            </div>
-            
-            <div class="border-t pt-3 flex justify-between items-center flex-wrap gap-2 text-xs">
-                <div>
-                    <p class="text-gray-500">Especialista: <strong class="text-gray-700">${cit.nutricionista}</strong> (${cit.especialidad})</p>
-                    ${cit.motivo_rechazo ? `<p class="text-red-500 mt-1 font-semibold">Motivo rechazo: ${cit.motivo_rechazo}</p>` : ''}
-                </div>
-                <div class="flex items-center gap-3">
-                    ${comprobanteBtn}
-                </div>
-            </div>
-            
-            <!-- Acciones de auditoría para Admin -->
-            <div class="flex gap-2 justify-end pt-2 border-t border-[rgba(0,0,0,0.03)] flex-wrap">
-                ${cit.estado === 'pendiente_confirmacion' || cit.estado === 'pendiente' 
-                    ? `<button onclick="responderCitaAdmin(${cit.id}, 'confirmada')" class="ios-btn py-1.5 px-3 text-[11px]" style="border-radius:8px;background:#22c55e">Aprobar Pago</button>
-                       <button onclick="responderCitaAdmin(${cit.id}, 'rechazada')" class="ios-btn py-1.5 px-3 text-[11px]" style="border-radius:8px;background:#ef4444;box-shadow:none">Rechazar Pago</button>`
-                    : ''
-                }
-                ${cit.estado === 'confirmada'
-                    ? `<button onclick="responderCitaAdmin(${cit.id}, 'cancelada')" class="ios-btn-ghost py-1.5 px-3 text-[11px]" style="border-radius:8px;color:#ef4444;border-color:#fca5a5">Cancelar Cita</button>`
-                    : ''
-                }
-            </div>
-        </div>`;
-    }).join('');
-}
-
-async function responderCitaAdmin(id, estado, motivo = '') {
-    if (estado === 'rechazada' && !motivo) {
-        motivo = prompt('Ingresa el motivo del rechazo del pago/reserva (mínimo 5 caracteres):');
-        if (motivo === null) return;
-        if (motivo.trim().length < 5) {
-            alert('El motivo de rechazo debe tener al menos 5 caracteres.');
-            return;
-        }
-    }
-    
-    try {
-        const res = await fetch('api/citas.php?accion=responder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, estado, motivo_rechazo: motivo })
-        });
-        const data = await res.json();
-        if (data.ok) {
-            mostrarFeedback('✅ Cita actualizada correctamente.', 'ok');
-            cargarCitasAdmin('');
-            cargarStats();
-        } else {
-            mostrarFeedback(data.error || 'Error al actualizar cita', 'error');
-        }
-    } catch (e) {
-        mostrarFeedback('Error de conexión con el servidor.', 'error');
-    }
-}
-
-function abrirModalComprobante(url) {
-    const img = document.getElementById('imgComprobante');
-    const pdf = document.getElementById('pdfComprobante');
-    const none = document.getElementById('txtNoComprobante');
-    
-    img.classList.add('hidden');
-    pdf.classList.add('hidden');
-    none.classList.add('hidden');
-    
-    if (!url) {
-        none.classList.remove('hidden');
-    } else if (url.toLowerCase().endsWith('.pdf')) {
-        pdf.src = url;
-        pdf.classList.remove('hidden');
-    } else {
-        img.src = url;
-        img.classList.remove('hidden');
-    }
-    document.getElementById('modalComprobante').classList.add('open');
-}
-
-function cerrarModalComprobante() {
-    document.getElementById('modalComprobante').classList.remove('open');
 }
 </script>
 </body>

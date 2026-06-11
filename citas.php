@@ -1,11 +1,12 @@
 <?php
 // ============================================================
-//  citas.php  —  Gestión de Citas (Pacientes, Nutricionistas, Admin)
+//  citas.php  —  Gestión de Citas (Pacientes, Nutricionistas)
 // ============================================================
 session_start();
 if (empty($_SESSION['usuario'])) { header('Location: login.php'); exit; }
 $usuario = $_SESSION['usuario'];
 $rol = $usuario['rol'];
+if ($rol === 'Administrador') { header('Location: dashboard.php'); exit; }
 ?>
 <!DOCTYPE html>
 <html lang="es">

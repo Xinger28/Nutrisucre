@@ -41,11 +41,11 @@ $avatarLetra = mb_strtoupper(mb_substr($primerNombre, 0, 1));
       <span class="icon" style="font-size:20px">menu</span>
     </button>
     <!-- Logo visible en móvil (en desktop lo tapa el sidebar) -->
-    <div class="flex items-center gap-2 md:hidden">
-      <div class="w-8 h-8 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-[10px] flex items-center justify-center shadow-md">
-        <span class="icon icon-fill text-white" style="font-size:17px">nutrition</span>
+    <div class="flex items-center gap-3 md:hidden cursor-pointer select-none" onclick="window.location.href='index.php'">
+      <div class="w-9 h-9 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-xl flex items-center justify-center shadow-lg">
+        <span class="icon icon-fill text-white text-lg" style="font-size:18px">nutrition</span>
       </div>
-      <span class="font-black text-[17px] tracking-tight text-[#1c1c1e]">NutriSucre</span>
+      <span class="text-xl font-black tracking-tight text-[#1c1c1e]">NutriSucre</span>
     </div>
     <!-- Título en desktop -->
     <p class="font-black text-[18px] tracking-tight hidden md:block">Inicio</p>
@@ -121,7 +121,7 @@ $avatarLetra = mb_strtoupper(mb_substr($primerNombre, 0, 1));
   <!-- Stats -->
   <div class="grid grid-cols-3 gap-4">
     <div class="stat-card fade-up" style="animation-delay:.05s">
-      <span class="icon text-[#22c55e]" style="font-size:24px">event</span>
+      <span id="stat1Icon" class="icon text-[#22c55e]" style="font-size:24px">event</span>
       <p id="stat1Valor" class="text-[32px] font-black mt-3 tracking-tight">—</p>
       <p id="stat1Label" class="text-[13px] text-[#8e8e93] mt-0.5 font-medium">Citas</p>
     </div>
@@ -137,18 +137,34 @@ $avatarLetra = mb_strtoupper(mb_substr($primerNombre, 0, 1));
     </div>
   </div>
 
-  <!-- Citas recientes -->
+  <!-- Citas recientes / Postulaciones recientes -->
+  <?php if ($rol === 'Administrador'): ?>
+  <div class="ios-card overflow-hidden fade-up" style="animation-delay:.2s">
+    <div class="flex justify-between items-center px-6 py-5 border-b border-[rgba(0,0,0,0.05)]">
+      <p class="font-black text-[17px]">Postulaciones recientes</p>
+      <a href="admin.php" class="text-[#22c55e] font-bold text-[13px] flex items-center gap-1 hover:opacity-70 transition-opacity">
+        <span class="icon" style="font-size:16px">visibility</span> Ver todas
+      </a>
+    </div>
+    <div id="tablaPostulaciones" class="divide-y divide-[rgba(0,0,0,0.04)]">
+      <div class="px-6 py-8 text-center text-[#8e8e93] text-[14px]">Cargando...</div>
+    </div>
+  </div>
+  <?php else: ?>
   <div class="ios-card overflow-hidden fade-up" style="animation-delay:.2s">
     <div class="flex justify-between items-center px-6 py-5 border-b border-[rgba(0,0,0,0.05)]">
       <p class="font-black text-[17px]">Citas recientes</p>
+      <?php if ($rol === 'Paciente'): ?>
       <a href="buscar.php" class="text-[#22c55e] font-bold text-[13px] flex items-center gap-1 hover:opacity-70 transition-opacity">
         <span class="icon" style="font-size:16px">add</span> Nueva
       </a>
+      <?php endif; ?>
     </div>
     <div id="tablaCitas" class="divide-y divide-[rgba(0,0,0,0.04)]">
       <div class="px-6 py-8 text-center text-[#8e8e93] text-[14px]">Cargando...</div>
     </div>
   </div>
+  <?php endif; ?>
 
 </main>
 
@@ -171,67 +187,123 @@ $avatarLetra = mb_strtoupper(mb_substr($primerNombre, 0, 1));
 
 <script>
 const ROL = '<?= $rol ?>';
-document.addEventListener('DOMContentLoaded', () => { cargarStats(); cargarCitas(); });
+document.addEventListener('DOMContentLoaded', () => {
+    cargarStats();
+    if (ROL === 'Administrador') {
+        cargarPostulaciones();
+    } else {
+        cargarCitas();
+    }
+});
 
 async function cargarStats() {
     try {
-        const [resCitas, resPlanes, resPeso, resServ] = await Promise.all([
-            fetch('api/citas.php'), fetch('api/planes.php'),
-            fetch('api/seguimiento.php'), fetch('api/servicios.php')
-        ]);
-        const [citas, planes, seg, servs] = await Promise.all([
-            resCitas.json(), resPlanes.json(), resPeso.json(), resServ.json()
-        ]);
-        document.getElementById('stat1Valor').textContent = Array.isArray(citas) ? citas.length : '—';
-        if (ROL === 'Paciente') {
-            const act = Array.isArray(planes) ? planes.filter(p => p.estado === 'activo').length : 0;
-            document.getElementById('stat2Valor').textContent = act;
-            document.getElementById('stat2Label').textContent = 'Planes activos';
-            const conPeso = Array.isArray(seg) ? seg.filter(r => r.peso !== null) : [];
-            if (conPeso.length >= 2) {
-                const d = (parseFloat(conPeso[conPeso.length-1].peso) - parseFloat(conPeso[0].peso)).toFixed(1);
-                const el = document.getElementById('stat3Valor');
-                el.textContent = (d > 0 ? '+' : '') + d + ' kg';
-                el.style.color = d < 0 ? '#22c55e' : d > 0 ? '#ef4444' : '';
-                document.getElementById('stat3Label').textContent = 'Cambio de peso';
-            } else { document.getElementById('stat3Valor').textContent = '—'; }
-        } else if (ROL === 'Nutricionista') {
-            const ap = Array.isArray(servs) ? servs.filter(s => s.estado === 'Aprobado').length : 0;
-            document.getElementById('stat2Valor').textContent = ap;
-            document.getElementById('stat2Label').textContent = 'Servicios activos';
-            document.getElementById('stat3Valor').textContent = Array.isArray(servs) ? servs.length : '—';
-            document.getElementById('stat3Label').textContent = 'Servicios totales';
-        } else {
+        if (ROL === 'Administrador') {
+            const [resUsers, resServ] = await Promise.all([
+                fetch('api/usuarios.php'), fetch('api/servicios.php')
+            ]);
+            const [users, servs] = await Promise.all([
+                resUsers.json(), resServ.json()
+            ]);
+            
+            document.getElementById('stat1Icon').textContent = 'group';
+            document.getElementById('stat1Valor').textContent = Array.isArray(users) ? users.length : '—';
+            document.getElementById('stat1Label').textContent = 'Total usuarios';
+            
             const pend = Array.isArray(servs) ? servs.filter(s => s.estado === 'Pendiente').length : 0;
             const stat2 = document.getElementById('stat2Valor');
             stat2.textContent = pend;
             stat2.style.color = pend > 0 ? '#f59e0b' : '';
             document.getElementById('stat2Label').textContent = 'Por validar';
+            
             document.getElementById('stat3Valor').textContent = Array.isArray(servs) ? servs.length : '—';
             document.getElementById('stat3Label').textContent = 'Servicios totales';
+        } else {
+            const [resCitas, resPlanes, resPeso, resServ] = await Promise.all([
+                fetch('api/citas.php'), fetch('api/planes.php'),
+                fetch('api/seguimiento.php'), fetch('api/servicios.php')
+            ]);
+            const [citas, planes, seg, servs] = await Promise.all([
+                resCitas.json(), resPlanes.json(), resPeso.json(), resServ.json()
+            ]);
+            document.getElementById('stat1Valor').textContent = Array.isArray(citas) ? citas.length : '—';
+            
+            if (ROL === 'Paciente') {
+                const act = Array.isArray(planes) ? planes.filter(p => p.estado === 'activo').length : 0;
+                document.getElementById('stat2Valor').textContent = act;
+                document.getElementById('stat2Label').textContent = 'Planes activos';
+                const conPeso = Array.isArray(seg) ? seg.filter(r => r.peso !== null) : [];
+                if (conPeso.length >= 2) {
+                    const d = (parseFloat(conPeso[conPeso.length-1].peso) - parseFloat(conPeso[0].peso)).toFixed(1);
+                    const el = document.getElementById('stat3Valor');
+                    el.textContent = (d > 0 ? '+' : '') + d + ' kg';
+                    el.style.color = d < 0 ? '#22c55e' : d > 0 ? '#ef4444' : '';
+                    document.getElementById('stat3Label').textContent = 'Cambio de peso';
+                } else { document.getElementById('stat3Valor').textContent = '—'; }
+            } else if (ROL === 'Nutricionista') {
+                const ap = Array.isArray(servs) ? servs.filter(s => s.estado === 'Aprobado').length : 0;
+                document.getElementById('stat2Valor').textContent = ap;
+                document.getElementById('stat2Label').textContent = 'Servicios activos';
+                document.getElementById('stat3Valor').textContent = Array.isArray(servs) ? servs.length : '—';
+                document.getElementById('stat3Label').textContent = 'Servicios totales';
+            }
         }
     } catch(e) { console.error(e); }
 }
 
 async function cargarCitas() {
-    const res  = await fetch('api/citas.php');
-    const data = await res.json();
-    const cont = document.getElementById('tablaCitas');
-    if (!Array.isArray(data) || data.length === 0) {
-        cont.innerHTML = '<div class="px-6 py-8 text-center text-[#8e8e93] text-[14px]">No hay citas registradas aún.</div>';
-        return;
+    try {
+        const res  = await fetch('api/citas.php');
+        const data = await res.json();
+        const cont = document.getElementById('tablaCitas');
+        if (!cont) return;
+        if (!Array.isArray(data) || data.length === 0) {
+            cont.innerHTML = '<div class="px-6 py-8 text-center text-[#8e8e93] text-[14px]">No hay citas registradas aún.</div>';
+            return;
+        }
+        cont.innerHTML = data.slice(0,5).map(c => {
+            const persona = ROL === 'Paciente' ? (c.nutricionista || '—') : (c.paciente || '—');
+            const badgeCls = c.estado === 'confirmada' ? 'badge-green' : 'badge-yellow';
+            return `<div class="flex items-center justify-between px-6 py-4 hover:bg-[#f9f9fb] transition-colors">
+                <div>
+                    <p class="font-semibold text-[14px]">${persona}</p>
+                    <p class="text-[12px] text-[#8e8e93] mt-0.5">${c.especialidad || 'Nutrición General'} · ${c.fecha}${c.hora ? ' ' + c.hora.slice(0,5) : ''}</p>
+                </div>
+                <span class="badge ${badgeCls}">${c.estado}</span>
+            </div>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function cargarPostulaciones() {
+    try {
+        const res  = await fetch('api/postulaciones.php');
+        const data = await res.json();
+        const cont = document.getElementById('tablaPostulaciones');
+        if (!cont) return;
+        if (!Array.isArray(data) || data.length === 0) {
+            cont.innerHTML = '<div class="px-6 py-8 text-center text-[#8e8e93] text-[14px]">No hay postulaciones registradas aún.</div>';
+            return;
+        }
+        cont.innerHTML = data.slice(0, 5).map(p => {
+            const ecls = p.estado === 'aprobado' ? 'badge-green' : p.estado === 'rechazado' ? 'badge-red' : 'badge-yellow';
+            const fechaStr = new Date(p.created_at || Date.now()).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+            return `<div class="flex items-center justify-between px-6 py-4 hover:bg-[#f9f9fb] transition-colors">
+                <div>
+                    <p class="font-semibold text-[14px]">${p.nombre}</p>
+                    <p class="text-[12px] text-[#8e8e93] mt-0.5">${p.universidad || 'Sin Universidad'} · Reg: ${p.registro_prof || '—'} · ${fechaStr}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="badge ${ecls}">${p.estado}</span>
+                    <a href="admin.php" class="ios-btn-icon" title="Gestionar"><span class="icon text-[#22c55e]" style="font-size:18px">arrow_forward</span></a>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        console.error(e);
+        const cont = document.getElementById('tablaPostulaciones');
+        if (cont) cont.innerHTML = '<div class="px-6 py-8 text-center text-red-500 text-[14px]">Error al cargar postulaciones.</div>';
     }
-    cont.innerHTML = data.slice(0,5).map(c => {
-        const persona = ROL === 'Paciente' ? (c.nutricionista || '—') : (c.paciente || '—');
-        const badgeCls = c.estado === 'confirmada' ? 'badge-green' : 'badge-yellow';
-        return `<div class="flex items-center justify-between px-6 py-4 hover:bg-[#f9f9fb] transition-colors">
-            <div>
-                <p class="font-semibold text-[14px]">${persona}</p>
-                <p class="text-[12px] text-[#8e8e93] mt-0.5">${c.especialidad || 'Nutrición General'} · ${c.fecha}${c.hora ? ' ' + c.hora.slice(0,5) : ''}</p>
-            </div>
-            <span class="badge ${badgeCls}">${c.estado}</span>
-        </div>`;
-    }).join('');
 }
 
 function abrirPerfil()  { document.getElementById('modalPerfil').classList.add('open'); }
