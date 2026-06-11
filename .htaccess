@@ -2,7 +2,7 @@
 Options -Indexes
 
 # Página de inicio
-DirectoryIndex login.php index.php index.html
+DirectoryIndex index.php login.php index.html
 
 # Headers de seguridad
 <IfModule mod_headers.c>
