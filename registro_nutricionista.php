@@ -27,7 +27,7 @@ $notasAdmin = $lastPost ? $lastPost['notas_admin'] : '';
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<title>NutriSucre · Mi Verificación</title>
+<title>NutriSucre · Mi Información</title>
 <?php require_once '_ios_head.php'; ?>
 <style>
   .paso { background:var(--bg); border-radius:18px; padding:24px; border:1.5px solid var(--border); }
@@ -49,7 +49,7 @@ $notasAdmin = $lastPost ? $lastPost['notas_admin'] : '';
     <header class="ios-header">
       <div class="flex items-center gap-3">
         <button onclick="toggleSidebar()" class="md:hidden ios-btn-icon"><span class="icon" style="font-size:20px">menu</span></button>
-        <p class="font-black text-[18px]">Mi Verificación Profesional</p>
+        <p class="font-black text-[18px]">Mi Información Profesional</p>
       </div>
       <div class="text-right hidden sm:block">
         <p class="font-semibold text-[14px]"><?= htmlspecialchars($usuario['nombre']) ?></p>

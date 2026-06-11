@@ -85,9 +85,6 @@ if (!empty($_SESSION['usuario'])) { header('Location: dashboard.php'); exit; }
               class="ios-btn w-full mt-2" style="border-radius:14px; padding:15px">
         Iniciar sesión
       </button>
-      <p class="text-center text-[12px] text-[#8e8e93] pt-1">
-        Demo: <span class="font-semibold text-[#48484a]">luis@nutrisucre.bo</span> / 123456
-      </p>
     </div>
 
     <!-- ═══ REGISTRO ═══ -->

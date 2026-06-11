@@ -182,29 +182,37 @@ document.addEventListener('DOMContentLoaded', () => {
 //  Cargar pacientes para el select (AJAX)
 // ──────────────────────────────────────────────
 async function cargarPacientes() {
-    const res  = await fetch('api/usuarios.php');
-    const data = await res.json();
+    try {
+        const res  = await fetch('api/usuarios.php');
+        const data = await res.json();
 
-    if (data.error) return;
+        if (data.error) {
+            document.getElementById('containerPlanes').innerHTML = `<div class="col-span-2 text-center py-12 text-red-400">Error: ${data.error}</div>`;
+            return;
+        }
 
-    // Filtrar solo pacientes
-    const pacientes = data.filter(u => u.rol === 'Paciente');
+        // Filtrar solo pacientes
+        const pacientes = data.filter(u => u.rol === 'Paciente');
 
-    const sel = document.getElementById('selectPaciente');
-    const selModal = document.getElementById('plan_paciente');
+        const sel = document.getElementById('selectPaciente');
+        const selModal = document.getElementById('plan_paciente');
 
-    const opcs = pacientes.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-    sel.innerHTML      = '<option value="">— Selecciona paciente —</option>' + opcs;
-    if (selModal) selModal.innerHTML = '<option value="">Selecciona un paciente</option>' + opcs;
+        const opcs = pacientes.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+        if (sel) sel.innerHTML = '<option value="">— Selecciona paciente —</option>' + opcs;
+        if (selModal) selModal.innerHTML = '<option value="">Selecciona un paciente</option>' + opcs;
 
-    // Cargar planes del primer paciente automaticamente
-    if (pacientes.length > 0) {
-        sel.value = pacientes[0].id;
-        pacienteIdActual = pacientes[0].id;
-        cargarPlanes(pacientes[0].id);
-    } else {
-        document.getElementById('containerPlanes').innerHTML =
-            '<div class="col-span-2 text-center py-12 text-gray-400">No hay pacientes registrados aún.</div>';
+        // Cargar planes del primer paciente automaticamente
+        if (pacientes.length > 0) {
+            if (sel) sel.value = pacientes[0].id;
+            pacienteIdActual = pacientes[0].id;
+            cargarPlanes(pacientes[0].id);
+        } else {
+            document.getElementById('containerPlanes').innerHTML =
+                '<div class="col-span-2 text-center py-12 text-gray-400">No hay pacientes registrados aún.</div>';
+        }
+    } catch(e) {
+        console.error(e);
+        document.getElementById('containerPlanes').innerHTML = '<div class="col-span-2 text-center py-12 text-red-400">Error de conexión al cargar pacientes.</div>';
     }
 }
 
@@ -221,26 +229,31 @@ async function cargarPlanes(pacienteId) {
     const container = document.getElementById('containerPlanes');
     container.innerHTML = '<div class="col-span-2 text-center py-8 text-gray-400">Cargando...</div>';
 
-    const res  = await fetch(`api/planes.php?paciente_id=${pacienteId}`);
-    const data = await res.json();
+    try {
+        const res  = await fetch(`api/planes.php?paciente_id=${pacienteId}`);
+        const data = await res.json();
 
-    if (data.error) {
-        container.innerHTML = `<div class="col-span-2 text-center py-12 text-red-400">${data.error}</div>`;
-        return;
+        if (data.error) {
+            container.innerHTML = `<div class="col-span-2 text-center py-12 text-red-400">${data.error}</div>`;
+            return;
+        }
+
+        todosLosPlanes = Array.isArray(data) ? data : [];
+
+        if (todosLosPlanes.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-2 text-center py-16">
+                    <span class="icon text-5xl text-gray-300">restaurant_menu</span>
+                    <p class="text-gray-400 mt-3">Este paciente aún no tiene planes asignados.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = todosLosPlanes.map(p => tarjetaPlan(p)).join('');
+    } catch(e) {
+        console.error(e);
+        container.innerHTML = '<div class="col-span-2 text-center py-12 text-red-400">Error de conexión al cargar planes.</div>';
     }
-
-    todosLosPlanes = Array.isArray(data) ? data : [];
-
-    if (todosLosPlanes.length === 0) {
-        container.innerHTML = `
-            <div class="col-span-2 text-center py-16">
-                <span class="icon text-5xl text-gray-300">restaurant_menu</span>
-                <p class="text-gray-400 mt-3">Este paciente aún no tiene planes asignados.</p>
-            </div>`;
-        return;
-    }
-
-    container.innerHTML = todosLosPlanes.map(p => tarjetaPlan(p)).join('');
 }
 
 // ──────────────────────────────────────────────

@@ -168,13 +168,13 @@ $whereSQL = implode(' AND ', $where);
 
 $stmt = $db->prepare("
     SELECT n.id, u.nombre, n.especialidad, n.precio, n.rating,
-           n.experiencia_años, n.pacientes_exit, n.modalidad,
+           n.experiencia_anios, n.pacientes_exit, n.modalidad,
            n.foto, n.estado_verificacion, n.duracion_consulta,
            (SELECT COUNT(*) FROM resenas r WHERE r.nutricionista_id = n.id) AS total_resenas
     FROM nutricionistas n
     JOIN usuarios u ON u.id = n.usuario_id
     WHERE $whereSQL
-    ORDER BY n.rating DESC, n.experiencia_años DESC
+    ORDER BY n.rating DESC, n.experiencia_anios DESC
 ");
 $stmt->execute($params);
 responderJSON($stmt->fetchAll());

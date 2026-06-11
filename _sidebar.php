@@ -17,7 +17,7 @@ $navLinks = [
     ['servicios.php',              'medical_services',  'Servicios',             ['Paciente']],
     ['servicios.php',              'verified',          'Validar Servicios',     ['Administrador']],
     ['planes.php',                 'restaurant_menu',   'Gestión de Planes',     ['Nutricionista','Administrador']],
-    ['registro_nutricionista.php', 'badge',             'Mi Verificación',       ['Nutricionista']],
+    ['registro_nutricionista.php', 'badge',             'Mi Información',        ['Nutricionista']],
     ['admin.php',                  'admin_panel_settings','Administración',      ['Administrador']],
 ];
 ?>
