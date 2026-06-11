@@ -65,8 +65,8 @@ $nombre  = $usuario['nombre'];
 
 <!-- ======= MODAL: Crear plan (solo nutricionista/admin) ======= -->
 <?php if (in_array($rol, ['Nutricionista','Administrador'])): ?>
-<div id="modalPlan" class="ios-modal-bg">
-  <div class="bg-white rounded-3xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+<div id="modalPlan" class="ios-modal-bg" onclick="if(event.target===this)cerrarModalPlan()">
+  <div class="ios-modal max-w-2xl p-8">
     <div class="flex justify-between items-center mb-6">
       <h3 class="text-2xl font-bold">Nuevo Plan Nutricional</h3>
       <button onclick="cerrarModalPlan()">
@@ -146,8 +146,8 @@ $nombre  = $usuario['nombre'];
 <?php endif; ?>
 
 <!-- ======= MODAL: Ver detalle del plan ======= -->
-<div id="modalDetalle" class="ios-modal-bg">
-  <div class="bg-white rounded-3xl w-full max-w-lg p-8">
+<div id="modalDetalle" class="ios-modal-bg" onclick="if(event.target===this)cerrarDetalle()">
+  <div class="ios-modal max-w-lg p-8">
     <div class="flex justify-between items-center mb-4">
       <h3 id="detalleTitulo" class="text-xl font-bold"></h3>
       <button onclick="cerrarDetalle()">
@@ -443,7 +443,7 @@ function cerrarDetalle() { document.getElementById('modalDetalle').classList.rem
 // ──────────────────────────────────────────────
 async function descargarPDF(planId) {
     // 1. Pedir datos del plan a la API PHP
-    const res  = await fetch(\`api/pdf_plan.php?id=\${planId}\`);
+    const res  = await fetch(`api/pdf_plan.php?id=${planId}`);
     const plan = await res.json();
     if (plan.error) return alert('Error: ' + plan.error);
 
@@ -491,9 +491,9 @@ async function descargarPDF(planId) {
     doc.setTextColor(...GRIS);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(\`Nutricionista: \${plan.nutricionista} (\${plan.especialidad})\`, 15, y); y += 6;
-    doc.text(\`Paciente: \${plan.paciente}\`, 15, y); y += 6;
-    doc.text(\`Fecha de inicio: \${plan.fecha_inicio}  |  Duración: \${plan.duracion_semanas} semanas\`, 15, y); y += 10;
+    doc.text(`Nutricionista: ${plan.nutricionista} (${plan.especialidad})`, 15, y); y += 6;
+    doc.text(`Paciente: ${plan.paciente}`, 15, y); y += 6;
+    doc.text(`Fecha de inicio: ${plan.fecha_inicio}  |  Duración: ${plan.duracion_semanas} semanas`, 15, y); y += 10;
 
     // Línea separadora
     doc.setDrawColor(...VERDE);
@@ -524,10 +524,10 @@ async function descargarPDF(planId) {
         doc.text('Objetivos nutricionales diarios', 15, y); y += 8;
 
         const macros = [
-            { etiqueta: 'Calorías',       valor: plan.calorias      ? \`\${plan.calorias} kcal\`  : '—', color: [245,158,11] },
-            { etiqueta: 'Proteínas',      valor: plan.proteinas     ? \`\${plan.proteinas} g\`    : '—', color: [59,130,246] },
-            { etiqueta: 'Carbohidratos',  valor: plan.carbohidratos ? \`\${plan.carbohidratos} g\`: '—', color: [234,179,8] },
-            { etiqueta: 'Grasas',         valor: plan.grasas        ? \`\${plan.grasas} g\`       : '—', color: [239,68,68] },
+            { etiqueta: 'Calorías',       valor: plan.calorias      ? `${plan.calorias} kcal`  : '—', color: [245,158,11] },
+            { etiqueta: 'Proteínas',      valor: plan.proteinas     ? `${plan.proteinas} g`    : '—', color: [59,130,246] },
+            { etiqueta: 'Carbohidratos',  valor: plan.carbohidratos ? `${plan.carbohidratos} g`: '—', color: [234,179,8] },
+            { etiqueta: 'Grasas',         valor: plan.grasas        ? `${plan.grasas} g`       : '—', color: [239,68,68] },
         ];
 
         const colW = 43;
@@ -553,10 +553,10 @@ async function descargarPDF(planId) {
     doc.setTextColor(...GRIS);
     doc.setFont('helvetica', 'italic');
     doc.text('Documento generado por NutriSucre — nutrisucre.bo', 15, 281);
-    doc.text(\`Fecha de emisión: \${new Date().toLocaleDateString('es-BO')}\`, 195, 281, { align: 'right' });
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-BO')}`, 195, 281, { align: 'right' });
 
     // 3. Descargar el archivo
-    const nombreArchivo = \`plan_\${plan.titulo.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase()}.pdf\`;
+    const nombreArchivo = `plan_${plan.titulo.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase()}.pdf`;
     doc.save(nombreArchivo);
 }
 
